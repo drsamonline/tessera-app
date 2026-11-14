@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.15.1] - 2026-11-14
+
+### Fixed
+
+- **A source the console has never heard of crashed the view.** The engine returns a combined source — `hubspot+zendesk`
+  — when two systems agree, and every `NODES[id]` lookup assumed one of the four known ids. Connecting to a real engine
+  with three nodes threw `Cannot read properties of undefined (reading 'authority')`. All lookups now go through
+  `nodeInfo()`, which synthesises an entry for an unknown or combined source instead of throwing.
+
+### Note
+
+Found by running `python3 -m tessera.demo` against the new three-node seed. It would not have been found against the
+old single-contact demo, because that one only ever produced `hubspot` and `hubspot+zendesk` on fields the console
+happened not to resolve.
+
 ## [1.15.0] - 2026-11-14
 
 ### Fixed

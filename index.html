@@ -735,6 +735,15 @@ const NODES = {
              lastSync: 0, errors: 0 },
 };
 
+const UNKNOWN_NODE = { label: "Engine", trust: 0.5, authority: {}, lastSync: 0, errors: 0 };
+
+function nodeInfo(id) {
+  if (NODES[id]) return NODES[id];
+  const first = String(id || "").split("+")[0];
+  if (NODES[first]) return { ...NODES[first], label: sourceLabel(id) };
+  return { ...UNKNOWN_NODE, label: sourceLabel(id) };
+}
+
 function sourceLabel(source) {
   if (!source) return "engine";
   if (source.includes("+")) {
@@ -955,14 +964,14 @@ function resolveField(field, candidates, authority) {
   const owned = entries.filter(e => AUTHORITY_RANK[authority[e.node]] === 3);
   if (owned.length === 1) return { ...owned[0], rule: "authority map" };
   if (owned.length > 1) {
-    owned.sort((a, b) => NODES[b.node].trust - NODES[a.node].trust);
+    owned.sort((a, b) => nodeInfo(b.node).trust - nodeInfo(a.node).trust);
     return { ...owned[0], rule: "authority, then trust" };
   }
   const distinct = new Set(entries.map(e => canonicalJSON(e.value)));
   if (distinct.size === 1) return { ...entries[0], rule: "agreement" };
 
-  const ranked = [...entries].sort((a, b) => NODES[b.node].trust - NODES[a.node].trust);
-  if (NODES[ranked[0].node].trust > NODES[ranked[1].node].trust) {
+  const ranked = [...entries].sort((a, b) => nodeInfo(b.node).trust - nodeInfo(a.node).trust);
+  if (nodeInfo(ranked[0].node).trust > nodeInfo(ranked[1].node).trust) {
     return { ...ranked[0], rule: "trust score" };
   }
   return { ...ranked[0], rule: "trust, then node id", blocked: true };
@@ -1337,7 +1346,7 @@ function currentValue(field) {
   }
   const candidates = RECORD[field];
   const resolution = resolveField(field, candidates, Object.fromEntries(
-    Object.entries(candidates).map(([node]) => [node, NODES[node].authority[field] || "bidirectional"])));
+    Object.entries(candidates).map(([node]) => [node, nodeInfo(node).authority[field] || "bidirectional"])));
   // order: a choice for this record, then your standing rule, then the engine
   const chosen = state.resolved[state.selected + "|" + field];
   if (chosen && candidates[chosen] !== undefined) {
@@ -1428,7 +1437,7 @@ function currentValueFor(record, field) {
   const chosen = state.resolved[record.id + "|" + field];
   if (chosen && candidates[chosen] !== undefined) return candidates[chosen];
   const resolution = resolveField(field, candidates, Object.fromEntries(
-    Object.entries(candidates).map(([node]) => [node, NODES[node].authority[field] || "bidirectional"])));
+    Object.entries(candidates).map(([node]) => [node, nodeInfo(node).authority[field] || "bidirectional"])));
   return resolution.value;
 }
 
@@ -1521,13 +1530,13 @@ async function addNote() {
 function renderTimeline() {
   const host = $("#timeline");
   host.innerHTML = ACTIVITY.map(item => `
-    <li><time>${item.at} · ${NODES[item.node].label}</time><p>${item.text}</p></li>`).join("");
+    <li><time>${item.at} · ${nodeInfo(item.node).label}</time><p>${item.text}</p></li>`).join("");
 }
 
 function engineWinner(field) {
   const candidates = RECORD[field] || {};
   const authority = Object.fromEntries(Object.entries(candidates).map(([node]) =>
-    [node, NODES[node].authority[field] || "bidirectional"]));
+    [node, nodeInfo(node).authority[field] || "bidirectional"]));
   return resolveField(field, candidates, authority);
 }
 
@@ -1538,7 +1547,7 @@ async function resolveFieldTo(field, node) {
   save();
   await enqueue("conflict.resolved", "human", { field, winner: node });
   renderAll();
-  toast(`Kept ${NODES[node].label} for ${field.replace(/_/g, " ")}`, async () => {
+  toast(`Kept ${nodeInfo(node).label} for ${field.replace(/_/g, " ")}`, async () => {
     if (before === undefined) delete state.resolved[key];
     else state.resolved[key] = before;
     save();
@@ -1579,7 +1588,7 @@ function renderRules() {
     <div class="top"><b>Your standing rules</b><span class="chip">applied to every record</span></div>
     ${fields.map(field => `<div class="row" style="margin:6px 0">
       <span class="mono">${field.replace(/_/g, " ")}</span>
-      <span class="chip ok">always ${NODES[rules[field]].label}</span>
+      <span class="chip ok">always ${nodeInfo(rules[field]).label}</span>
       <button class="btn small ghost" data-unrule="${field}">Remove</button>
     </div>`).join("")}
   </div>`;
@@ -1609,7 +1618,7 @@ function renderConflicts() {
   host.innerHTML = fields.map(field => {
     const entries = Object.entries(RECORD[field]);
     const authority = Object.fromEntries(entries.map(([node]) =>
-      [node, NODES[node].authority[field] || "bidirectional"]));
+      [node, nodeInfo(node).authority[field] || "bidirectional"]));
     const resolution = resolveField(field, RECORD[field], authority);
     return `<div class="item">
       <div class="top">
@@ -1621,12 +1630,12 @@ function renderConflicts() {
         return `<div class="row" style="margin:6px 0">
           <span class="val">${formatValue(field, value)}</span>
           <span class="chip ${isCurrent ? "ok" : "warn"}">${isCurrent ? "current" : "changes"}</span>
-          <span class="mono">${NODES[node].label} · trust ${NODES[node].trust.toFixed(2)}</span>
+          <span class="mono">${nodeInfo(node).label} · trust ${nodeInfo(node).trust.toFixed(2)}</span>
           <button class="btn small" data-pick="${field}|${node}">${isCurrent ? "Keep" : "Change to this"}</button>
           <button class="btn small ghost" data-always="${field}|${node}" title="Use this system for this field on every record">Always</button>
         </div>`;
       }).join("")}
-      <div class="note">The engine would take <b>${NODES[resolution.node].label}</b> by ${resolution.rule}.</div>
+      <div class="note">The engine would take <b>${nodeInfo(resolution.node).label}</b> by ${resolution.rule}.</div>
     </div>`;
   }).join("");
   $$("[data-pick]", host).forEach(btn => {
@@ -1643,7 +1652,7 @@ function renderConflicts() {
       save();
       await enqueue("rule.saved", "human", { field, source: node });
       renderAll();
-      toast(`Rule saved: ${field.replace(/_/g, " ")} always from ${NODES[node].label}`, async () => {
+      toast(`Rule saved: ${field.replace(/_/g, " ")} always from ${nodeInfo(node).label}`, async () => {
         state.rules = before;
         save();
         await enqueue("rule.removed", "human", { field });
@@ -1828,7 +1837,7 @@ function openHistory(field) {
           </span>
         </div>`).join("")
     : `<p class="note">No event has touched this field yet. The current value comes from
-         <b>${NODES[current.node].label}</b> by ${current.rule}.</p>`;
+         <b>${nodeInfo(current.node).label}</b> by ${current.rule}.</p>`;
 
   $("#histBody").innerHTML = rows + `
     <p class="note" style="margin-top:12px">Every write is in the chain. Close this and press
