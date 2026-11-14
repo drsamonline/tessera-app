@@ -229,6 +229,13 @@ a{color:var(--accent)}
   border-radius:var(--r-sm);font-size:13.5px;min-height:44px;color:var(--text)}
 .pal-item[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
 .pal-item .kind{margin-left:auto;font-size:10.5px;font-family:var(--mono);opacity:.7}
+#mail{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;display:grid;place-items:center;
+  padding:16px;backdrop-filter:blur(2px)}
+#mail[hidden]{display:none}
+#mail textarea{width:100%;background:var(--raise);color:var(--text);border:1px solid var(--line-control);
+  border-radius:var(--r-sm);padding:10px 12px;font:inherit;font-size:13px;resize:vertical}
+@media (max-width:640px){#mail{place-items:end center;padding:0}
+  #mail .sheet{width:100%;border-radius:var(--r-lg) var(--r-lg) 0 0;max-height:92vh}}
 #edit{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;display:grid;place-items:center;
   padding:16px;backdrop-filter:blur(2px)}
 #edit[hidden]{display:none}
@@ -438,6 +445,7 @@ a{color:var(--accent)}
         <button class="rowaction" id="exportCsv">Export CSV</button>
         <button class="rowaction" id="copyLink">Copy link</button>
         <button class="rowaction" id="printOne">Print record</button>
+        <button class="rowaction" id="logMail">Log email</button>
       </div>
 
       <div class="print-only print-head">
@@ -467,6 +475,11 @@ a{color:var(--accent)}
           <div class="body">
             <ul class="tl" id="timeline"></ul>
           </div>
+        </div>
+
+        <div class="card" style="margin-top:var(--gap)">
+          <header>Related</header>
+          <div class="body" id="related"></div>
         </div>
 
         <div class="card" style="margin-top:var(--gap)">
@@ -713,6 +726,36 @@ a{color:var(--accent)}
     <input id="palInput" type="text" placeholder="Jump to a customer, or type a command…"
            autocomplete="off" spellcheck="false">
     <div id="palList" role="listbox" aria-label="Commands"></div>
+  </div>
+</div>
+<div id="mail" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mailTitle">
+    <div class="sheet-head">
+      <b id="mailTitle">Log an email</b>
+      <button class="iconbtn" id="mailClose" aria-label="Close">✕</button>
+    </div>
+    <div class="sheet-body">
+      <p class="note" style="margin:0 0 12px">Logged as a ledger event, not sent. TESSERA keeps the record of the
+        conversation; your mail client still sends the mail.</p>
+      <div class="row" style="margin-bottom:10px">
+        <label class="field" style="flex:1 1 45%"><span>Direction</span>
+          <select id="mailDir">
+            <option value="outbound">we sent</option>
+            <option value="inbound">they sent</option>
+          </select></label>
+        <label class="field" style="flex:1 1 45%"><span>When</span>
+          <input id="mailWhen" type="datetime-local"></label>
+      </div>
+      <label class="field"><span>Subject</span>
+        <input id="mailSubject" placeholder="Renewal terms" autocomplete="off"></label>
+      <label class="field"><span>Body</span>
+        <textarea id="mailBody" rows="5" placeholder="What was said"></textarea></label>
+      <p class="note" id="mailStatus"></p>
+      <div class="row" style="margin-top:10px">
+        <button class="btn primary" id="mailSave">Log it</button>
+        <button class="btn" id="mailCancel">Cancel</button>
+      </div>
+    </div>
   </div>
 </div>
 <div id="edit" hidden>
@@ -1022,6 +1065,17 @@ function allRecords() {
   return RECORDS.concat(state.customRecords || []);
 }
 
+async function loadEngineCompanies() {
+  state.engineCompanies = [];
+  try {
+    const listing = await engineFetch("/v1/objects/Company");
+    for (const id of listing.ids) {
+      const detail = await engineFetch(`/v1/objects/Company/${id}`);
+      state.engineCompanies.push(detail.record || {});
+    }
+  } catch { state.engineCompanies = []; }
+}
+
 async function loadEngineDeals() {
   state.engineDeals = [];
   try {
@@ -1069,6 +1123,7 @@ async function loadEngineRecords() {
   }
   state.engineRecords = records;
   await loadEngineDeals();
+  await loadEngineCompanies();
   // the selection was a demo id; point it at a record that now exists
   if (records.length && !records.some(record => record.id === state.selected)) {
     state.selected = records[0].id;
@@ -1693,6 +1748,38 @@ function renderConnectors() {
   }).join("");
 }
 
+function renderRelated() {
+  const host = $("#related");
+  if (!host) return;
+  const record = activeRecord();
+  const companyRef = record.fields && record.fields.company_ref
+    ? Object.values(record.fields.company_ref)[0] : null;
+  const companies = state.engineCompanies || [];
+  const company = companyRef
+    ? companies.find(item => `Company:${item.id}` === companyRef) : null;
+  const deals = (state.engineDeals || []).filter(deal =>
+    companyRef && deal.company_ref === companyRef);
+
+  if (!companyRef) {
+    host.innerHTML = `<p class="note">No company reference on this record.</p>`;
+    return;
+  }
+  host.innerHTML = `
+    <div class="row" style="margin:0 0 10px">
+      <span class="mono" style="font-size:11px;color:var(--muted)">COMPANY</span>
+      <b>${company ? company.name : companyRef}</b>
+      ${company && company.domain ? `<span class="note">${company.domain}</span>` : ""}
+    </div>
+    ${deals.length ? deals.map(deal => `
+      <div class="row" style="margin:6px 0">
+        <span class="mono" style="font-size:11px;color:var(--muted);min-width:64px">DEAL</span>
+        <span>${deal.name}</span>
+        <span class="chip">${deal.stage || "unknown"}</span>
+        <span class="mono">${formatValue("amount_minor", deal.amount_minor || 0)}</span>
+      </div>`).join("")
+      : `<p class="note">No deals for this company.</p>`}`;
+}
+
 function renderNotes() {
   const host = $("#noteList");
   if (!host) return;
@@ -2008,7 +2095,7 @@ function renderAll() {
   $("#printMeta").textContent =
     `${record.name} · ${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC · ` +
     `chain head ${head}… · ${Object.keys(record.fields).filter(isConflict).length} open conflict(s)`;
-  renderRecords(); renderConnectors(); renderNotes(); renderReport();
+  renderRecords(); renderConnectors(); renderNotes(); renderRelated(); renderReport();
   renderFields(); renderTimeline(); renderRules(); renderConflicts(); renderLedger(); renderSeats();
   renderRouting(); renderWorkflows();
   $("#storageNote").textContent =
@@ -2054,6 +2141,7 @@ document.addEventListener("keydown", event => {
     if (!$("#imp").hidden) closeImport();
     if (!$("#new").hidden) closeSheet("#new");
     if (!$("#edit").hidden) closeSheet("#edit");
+    if (!$("#mail").hidden) closeSheet("#mail");
   }
 });
 
@@ -2133,6 +2221,41 @@ $("#palInput").onkeydown = event => {
   if (event.key === "Enter") { event.preventDefault(); runPalette(palIndex); }
 };
 $("#pal").onclick = event => { if (event.target.id === "pal") closePalette(); };
+
+/* ---- log an email -------------------------------------------------------- */
+function openMail() {
+  $("#mailStatus").textContent = "";
+  const now = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+    .toISOString().slice(0, 16);
+  $("#mailWhen").value = now;
+  $("#mailSubject").value = "";
+  $("#mailBody").value = "";
+  openSheet("#mail");
+  $("#mailSubject").focus();
+}
+
+async function saveMail() {
+  const status = $("#mailStatus");
+  const subject = ($("#mailSubject").value || "").trim();
+  if (!subject) { status.textContent = "A subject is required."; $("#mailSubject").focus(); return; }
+  const payload = {
+    record: state.selected,
+    direction: $("#mailDir").value,
+    at: $("#mailWhen").value || new Date().toISOString(),
+    subject,
+    body: ($("#mailBody").value || "").trim(),
+  };
+  status.textContent = "Logging…";
+  await enqueue("email.logged", "human", payload);
+  closeSheet("#mail");
+  renderTimeline();
+  toast(`Email logged: ${subject}`);
+}
+
+$("#mailClose").onclick = () => closeSheet("#mail");
+$("#mailCancel").onclick = () => closeSheet("#mail");
+$("#mailSave").onclick = saveMail;
+$("#mail").onclick = event => { if (event.target.id === "mail") closeSheet("#mail"); };
 
 /* ---- edit one field ----------------------------------------------------- */
 let editingField = null;
@@ -2440,7 +2563,7 @@ $("#impFile").onchange = event => {
   reader.readAsText(file);
 };
 
-["#hist", "#imp", "#pal", "#new", "#edit"].forEach(id => trapFocus($(id)));
+["#hist", "#imp", "#pal", "#new", "#edit", "#mail"].forEach(id => trapFocus($(id)));
 
 /* ---- navigation --------------------------------------------------------- */
 function go(view, recordId) {
@@ -2614,6 +2737,8 @@ $("#reloadNow").onclick = () => {
   sessionStorage.setItem("tessera.reloaded", "1");
   location.reload();
 };
+
+$("#logMail").onclick = openMail;
 
 $("#printOne").onclick = () => {
   enqueue("record.printed", "human", { record: state.selected });

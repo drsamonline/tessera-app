@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.18.0] - 2026-11-15
+
+### Added
+
+- **Related.** A record now shows its company and that company's deals, with stage and value — the relational spine any
+  CRM needs, read from the engine through `company_ref`.
+- **Log an email.** Direction, when, subject and body, stored as an `email.logged` ledger event and shown at the top of
+  the activity feed. It does not send mail: TESSERA keeps the record of the conversation, your mail client sends it.
+
+### Fixed
+
+- The Related card showed **"No deals for this company"** against a company that had one. The cause was in the engine's
+  demo data — deals carried `company_ref` values in the old id shape, so the reference named nothing. Fixed in the
+  engine at `v1.35.1`, with three referential-integrity tests.
+
 ## [1.17.0] - 2026-11-15
 
 ### Added
