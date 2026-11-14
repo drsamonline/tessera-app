@@ -383,6 +383,7 @@ a{color:var(--accent)}
     <div class="ws">
       <label class="sr" for="ws">Workspace</label>
       <span class="chip warn" id="queueChip" hidden title="Writes waiting to reach the ledger"></span>
+      <span class="chip ok" id="engineChip" hidden title="Reading from a running engine"></span>
       <select id="ws"><option>Acme</option><option>Northwind</option></select>
       <button class="iconbtn" id="theme" title="Switch theme" aria-label="Switch theme">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg>
@@ -561,6 +562,29 @@ a{color:var(--accent)}
         </div>
       </div>
       <div class="card" style="margin-top:12px">
+        <header>Engine</header>
+        <div class="body">
+          <p class="note" style="margin:0 0 12px">Point the console at a running TESSERA engine and the Records
+            list comes from it instead of the demo. <code>python3 -m tessera.api</code> prints its URL and token.</p>
+          <div class="setting">
+            <div><b>Address</b><div class="note">Base URL of the API, no trailing slash.</div></div>
+            <input id="engineUrl" class="search" style="min-width:220px" placeholder="http://127.0.0.1:8080">
+          </div>
+          <div class="setting">
+            <div><b>Token</b><div class="note">Sent as a bearer header. Stored in this browser only.</div></div>
+            <input id="engineToken" class="search" style="min-width:220px" placeholder="demo-token" type="password">
+          </div>
+          <div class="setting">
+            <div><b>Status</b><div class="note" id="engineStatus">Not connected — showing the demo.</div></div>
+            <div class="row">
+              <button class="btn small primary" id="engineConnect">Connect</button>
+              <button class="btn small ghost" id="engineDisconnect">Disconnect</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
         <header>Workspace</header>
         <div class="body">
           <div class="setting">
@@ -689,6 +713,10 @@ const NODES = {
   netsuite:{ id: "netsuite", label: "NetSuite", kind: "erp", trust: 0.74, authority: { amount_minor: "authority" },
              lastSync: 96, errors: 0 },
   native:  { id: "native", label: "Tessera", kind: "native", trust: 0.90, authority: {},
+             lastSync: 0, errors: 0 },
+  // the engine itself, when the console is reading from one: every field it
+  // resolves arrives already merged, so it is a source like any other
+  engine:  { id: "engine", label: "Engine", kind: "native", trust: 0.95, authority: {},
              lastSync: 0, errors: 0 },
 };
 
@@ -839,7 +867,34 @@ const RECORDS = [
 let RECORD = RECORDS[0].fields;
 let ACTIVITY = RECORDS[0].activity;
 function allRecords() {
+  if (state.engine && state.engine.live && state.engineRecords && state.engineRecords.length) {
+    return state.engineRecords;
+  }
   return RECORDS.concat(state.customRecords || []);
+}
+
+/* The engine's records, in the shape this console renders. A field the engine
+   resolved comes with its source and rule, which is exactly what a provenance
+   line needs - so the live view is not a lesser view. */
+async function loadEngineRecords() {
+  const listing = await engineFetch("/v1/objects/Contact");
+  const records = [];
+  for (const id of listing.ids) {
+    const detail = await engineFetch(`/v1/objects/Contact/${id}`);
+    const record = detail.record || {};
+    const fields = {};
+    for (const [field, value] of Object.entries(record)) {
+      if (["tenant_id", "valid_to", "tx_time", "retention_policy_id"].includes(field)) continue;
+      fields[field] = { engine: value };
+    }
+    records.push({
+      id, name: record.full_name || record.email || id.slice(0, 8),
+      role: "from the engine", company: record.company_ref || "-",
+      health: 50, fields, activity: [],
+    });
+  }
+  state.engineRecords = records;
+  return records;
 }
 
 function activeRecord() {
@@ -898,6 +953,7 @@ const DEFAULT_STATE = {
   outbox: [],
   flushed: [],
   rules: {},             // field -> node, applied to every record
+  engine: { url: "", token: "", live: false },
   resolved: {},          // "recordId|field" -> chosen node
   ledger: null,          // [{seq, action, actor, payload, hash, prev}]
   theme: "dark",
@@ -973,8 +1029,10 @@ function mergeState(raw) {
 }
 
 async function loadState() {
+  // A storage engine that never answers must not hang the boot. The mirror is
+  // there for exactly this: a private window, a blocked origin, a wedged profile.
   try {
-    const fromIdb = await idbGet(STORE_KEY);
+    const fromIdb = await withTimeout(idbGet(STORE_KEY), 1500, null);
     if (fromIdb) { storageBackend = "indexeddb"; return mergeState(fromIdb); }
   } catch {}
   try {
@@ -995,6 +1053,64 @@ function save() {
   try { serialised = JSON.stringify(state); } catch { return; }
   try { localStorage.setItem(STORE_KEY, serialised); } catch {}
   idbSet(STORE_KEY, serialised).then(() => { storageBackend = "indexeddb"; }).catch(() => {});
+}
+
+/* ---- the engine, when there is one ------------------------------------- */
+async function engineFetch(path) {
+  const { url, token } = state.engine || {};
+  if (!url) throw new Error("no engine configured");
+  const response = await fetch(`${url}${path}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+  return response.json();
+}
+
+async function connectEngine() {
+  const url = ($("#engineUrl").value || "").trim().replace(/\/$/, "");
+  const token = ($("#engineToken").value || "").trim();
+  const status = $("#engineStatus");
+  if (!url) { status.textContent = "Enter an address first."; return; }
+  status.textContent = "Contacting the engine…";
+  try {
+    const health = await fetch(`${url}/health`).then(r => r.json());
+    const listing = await fetch(`${url}/v1/objects/Contact`,
+      { headers: { Authorization: `Bearer ${token}` } });
+    if (!listing.ok) throw new Error(`${listing.status} from /v1/objects/Contact`);
+    const data = await listing.json();
+    state.engine = { url, token, live: true };
+    save();
+    await loadEngineRecords();
+    status.textContent = `Connected to ${health.tenant || "engine"} — ${data.ids.length} contact(s).`;
+    renderAll();
+    toast("Engine connected — the Records list is live");
+  } catch (error) {
+    state.engine = { url, token, live: false };
+    save();
+    status.textContent = `Could not connect: ${error.message}. A CORS refusal looks identical to a refused ` +
+      `connection from here — check the engine's allowlist includes this origin.`;
+  }
+  renderEngineChip();
+}
+
+function disconnectEngine() {
+  state.engine = { url: "", token: "", live: false };
+  state.engineRecords = [];
+  save();
+  $("#engineStatus").textContent = "Not connected — showing the demo.";
+  $("#engineUrl").value = "";
+  $("#engineToken").value = "";
+  renderEngineChip();
+  renderAll();
+  toast("Disconnected — back to the demo data");
+}
+
+function renderEngineChip() {
+  const chip = $("#engineChip");
+  if (!chip) return;
+  const live = state.engine && state.engine.live;
+  chip.hidden = !live;
+  chip.textContent = live ? `engine ${new URL(state.engine.url).host}` : "";
 }
 
 async function storageReport() {
@@ -1827,7 +1943,10 @@ function go(view, recordId) {
   $$("[data-go]").forEach(button => button.setAttribute("aria-current", String(button.dataset.go === view)));
   $("#main").scrollTop = 0;
   const target = view === "unified" ? `#unified/${state.selected}` : `#${view}`;
-  if (location.hash !== target) history.replaceState(null, "", target);
+  // keep the query string: go() used to replace the whole URL, so a link opened
+  // with ?engine=... lost its parameters the first time anything navigated.
+  const full = location.pathname + location.search + target;
+  if (location.hash !== target || location.search) history.replaceState(null, "", full);
 }
 
 function applyRoute() {
@@ -1941,6 +2060,9 @@ $("#exportCsv").onclick = () => {
   enqueue("record.exported", "human", { record: payload.id, format: "csv" });
   toast("Exported as CSV");
 };
+
+$("#engineConnect").onclick = connectEngine;
+$("#engineDisconnect").onclick = disconnectEngine;
 
 $("#exportWorkspace").onclick = () => {
   const bundle = { app: "tessera-console", version: "1.9.0",
@@ -2150,6 +2272,8 @@ document.addEventListener("keydown", event => {
   syncViewBar();
   renderSavedViews();
   applyRoute();
+
+
   // The chain is not needed to render a record. Kick it off and let boot finish;
   // hashing five events takes milliseconds in a browser and can hang outright in
   // an environment without a real clock, and neither should hold up the screen.
@@ -2164,6 +2288,16 @@ document.addEventListener("keydown", event => {
   RECORD = record.fields;
   ACTIVITY = record.activity;
   renderAll();
+
+  // ?engine=<url>&token=<t> connects on load: a demo link that shows live data.
+  // After hydration, not before - loadState() replaces the state object wholesale.
+  const query = new URLSearchParams(location.search);
+  if (query.get("engine")) {
+    $("#engineUrl").value = query.get("engine");
+    $("#engineToken").value = query.get("token") || "";
+    connectEngine();
+  }
+
   // a shared link or text from the OS share sheet lands in the search box
   const shared = new URLSearchParams(location.search);
   const sharedText = (shared.get("text") || shared.get("title") || "").trim();

@@ -44,7 +44,7 @@ shows **where every value came from**, and records the whole thing in a hash cha
 | **Ledger** | Every event, SHA-256 chained. **Verify chain** recomputes it locally. **Tamper** proves the verification works. An undo is a new event, never a deleted one. |
 | **Workforce** | Work goes to a position, not a person. The router shows its term-by-term arithmetic. **Assign**, **assign to me**, or **escalate** with a signed packet — each undoable. |
 | **Automate** | A workflow written by an agent is a proposal. The run button is disabled until a person approves it. |
-| **Settings** | Theme, density, live storage report including the queue, and a one-file **workspace backup** with restore and undo. Nothing leaves the browser. |
+| **Settings** | Theme, density, live storage report, a one-file **workspace backup**, and an **engine connection** — point it at a running TESSERA API and the Records list comes from it. |
 
 <img src="assets/shot-records.png" alt="The records list: ten customers with their conflict counts and relationship health" width="100%">
 
@@ -100,6 +100,22 @@ writes the whole workspace to one file, and **Restore** reads it back.
 | Print | `@media print` forces paper tokens — see [the sample output](assets/one-pager.pdf) |
 | Motion | honours `prefers-reduced-motion` |
 | Network | none after first load; no analytics, no fonts, no CDN |
+
+## Reading from a real engine
+
+The console ships with seeded data so it works offline out of the box. Point it at a running engine and it reads live:
+
+```bash
+# in the engine repository
+python3 -m tessera.api          # prints its URL and token
+
+# then either use Settings → Engine, or open the console with
+# ?engine=http://127.0.0.1:8080&token=demo-token
+```
+
+The Records list then comes from `/v1/objects/Contact`, each record from `/v1/objects/Contact/{id}`, and every
+field arrives with the source and rule the engine resolved it by. The engine's CORS allowlist must include the
+console's origin — `docs/46-cors.md` in the engine explains why it is an allowlist and not a wildcard.
 
 ## What this is not
 

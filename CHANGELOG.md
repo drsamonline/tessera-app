@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.12.0] - 2026-11-14
+
+### Added
+
+- **The console can read from a running engine.** Settings gains an address and a token; when connected the Records
+  list comes from `/v1/objects/Contact` and each record from `/v1/objects/Contact/{id}`, with a chip in the bar
+  showing which host it is talking to. `?engine=http://host:port&token=…` connects on load.
+- The engine is registered as a source node, so a field it resolved shows provenance like any other.
+
+### Fixed
+
+- **`go()` discarded the query string.** `history.replaceState` was called with the hash alone, so any link opened
+  with parameters lost them the first time anything navigated.
+- **`loadState()` had no deadline.** A storage engine that never answers — a private window, a blocked origin, a
+  wedged profile — hung the boot forever. It now falls back to the localStorage mirror after 1.5s.
+
+### Why this matters more than the last four releases
+
+Everything before this read seeded data. This is the first time the console has read a record that a real engine
+produced, over HTTP, with a bearer token and a CORS allowlist. It is the difference between a demo and a client.
+
 ## [1.11.0] - 2026-11-14
 
 ### Added
