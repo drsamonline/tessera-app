@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TESSERA — one customer view across every system</title>
+<meta name="description" content="A working console for the TESSERA reference core: field-level merge, conflict resolution, a hash-chained ledger and seat-based routing. Runs in your browser, offline, with no server.">
+<meta name="theme-color" content="#0b0d10">
+<meta property="og:title" content="TESSERA — one customer view across every system">
+<meta property="og:description" content="Field-level merge, conflict resolution, a tamper-evident ledger and seat-based routing. In your browser. Offline.">
+<meta property="og:image" content="assets/shot-desktop.png">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<style>
+:root{
+  --bg:#0b0d10;--surface:#14181d;--raise:#1c2229;--line:#2a3038;--text:#e8e6e1;--muted:#a3acb6;
+  --accent:#d9a441;--accent-ink:#0b0d10;--teal:#5fb3ac;--ok:#56d364;
+  --font:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.6;
+  -webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px}
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+
+/* nav */
+nav{position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--bg) 88%,transparent);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;align-items:center;gap:14px;height:62px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.14em;font-size:14px}
+.brand svg{width:26px;height:26px}
+nav .links{margin-left:auto;display:flex;gap:18px;font-size:13.5px;color:var(--muted)}
+nav .links a{color:var(--muted)}
+nav .links a:hover{color:var(--text);text-decoration:none}
+.cta{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 18px;
+  border-radius:10px;background:var(--accent);color:var(--accent-ink)!important;font-weight:650;
+  font-size:13.5px;border:1px solid var(--accent)}
+.cta:hover{text-decoration:none;filter:brightness(1.06)}
+.cta.ghost{background:transparent;color:var(--text)!important;border-color:var(--line)}
+
+/* hero */
+header.hero{padding:72px 0 40px;position:relative;overflow:hidden}
+header.hero::before{content:"";position:absolute;inset:-40% -10% auto -10%;height:520px;
+  background:radial-gradient(60% 60% at 30% 20%,color-mix(in srgb,var(--accent) 18%,transparent),transparent 70%),
+             radial-gradient(50% 50% at 75% 10%,color-mix(in srgb,var(--teal) 14%,transparent),transparent 70%);
+  pointer-events:none}
+.hero .wrap{position:relative}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--accent);margin-bottom:18px}
+h1{font-size:clamp(32px,5vw,54px);line-height:1.08;letter-spacing:-.02em;margin:0 0 18px;max-width:20ch}
+h1 em{font-style:normal;color:var(--accent)}
+.lede{font-size:clamp(15px,1.6vw,18px);color:var(--muted);max-width:60ch;margin:0 0 28px}
+.actions{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.meta{font-size:12.5px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap}
+.meta span{display:inline-flex;align-items:center;gap:6px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+
+/* the shot */
+.shot{margin:44px 0 0;border:1px solid var(--line);border-radius:16px;overflow:hidden;
+  background:var(--surface);box-shadow:0 30px 80px -40px rgba(0,0,0,.9)}
+.shot img{display:block;width:100%;height:auto}
+.shot .chrome{display:flex;gap:7px;padding:10px 14px;border-bottom:1px solid var(--line);
+  background:var(--raise)}
+.shot .chrome i{width:10px;height:10px;border-radius:50%;background:var(--line);display:block}
+
+/* sections */
+section{padding:64px 0;border-top:1px solid var(--line)}
+h2{font-size:clamp(22px,2.6vw,30px);letter-spacing:-.015em;margin:0 0 10px}
+.sub{color:var(--muted);margin:0 0 34px;max-width:62ch}
+.cols{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px}
+.card h3{margin:0 0 8px;font-size:16px}
+.card p{margin:0;color:var(--muted);font-size:14px}
+.card .tag{font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:.08em;
+  text-transform:uppercase;display:block;margin-bottom:10px}
+figure{margin:0;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface)}
+figure img{display:block;width:100%;height:auto}
+figcaption{padding:12px 16px;font-size:13px;color:var(--muted);border-top:1px solid var(--line)}
+.two{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+.two .mobile{max-width:300px;margin:0 auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--line)}
+th{color:var(--muted);font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+td b{font-weight:600}
+code{font-family:var(--mono);font-size:.92em;background:var(--raise);padding:2px 6px;border-radius:5px}
+pre{background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:16px;overflow:auto;
+  font-family:var(--mono);font-size:13px;line-height:1.7}
+.honest{border-left:3px solid var(--accent);padding-left:18px;color:var(--muted);font-size:14px}
+footer{border-top:1px solid var(--line);padding:40px 0 60px;color:var(--muted);font-size:13.5px}
+footer .wrap{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+footer b{color:var(--text)}
+@media (max-width:720px){
+  nav .links{display:none}
+  header.hero{padding:44px 0 24px}
+  section{padding:44px 0}
+}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <span class="brand">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="1" y="1" width="10" height="10" rx="2.4" fill="#d9a441"/>
+        <rect x="13" y="1" width="10" height="10" rx="2.4" fill="#5fb3ac" opacity=".85"/>
+        <rect x="1" y="13" width="10" height="10" rx="2.4" fill="#5fb3ac" opacity=".55"/>
+        <rect x="13" y="13" width="10" height="10" rx="2.4" fill="#d9a441" opacity=".55"/>
+      </svg>
+      TESSERA
+    </span>
+    <span class="links">
+      <a href="#what">What it does</a>
+      <a href="#proof">Proof</a>
+      <a href="#honest">Limits</a>
+      <a href="https://github.com/drsamonline/tessera">Engine</a>
+    </span>
+    <a class="cta" href="app/">Open the console</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span> Runs offline · no server · no account</span>
+    <h1>One customer. Four systems. <em>One record you can prove.</em></h1>
+    <p class="lede">
+      Your CRM, helpdesk, ERP and inbox each hold a slice of the same customer, and they disagree.
+      TESSERA merges them field by field, shows where every value came from, and records the
+      whole thing in a hash chain you can verify in your own browser.
+    </p>
+    <div class="actions">
+      <a class="cta" href="app/">Open the console</a>
+      <a class="cta ghost" href="https://github.com/drsamonline/tessera">Read the specification</a>
+    </div>
+    <div class="meta">
+      <span><span class="dot"></span> Works offline after first load</span>
+      <span>Installable as an app</span>
+      <span>Zero dependencies</span>
+      <span>PolyForm Noncommercial</span>
+    </div>
+
+    <div class="shot">
+      <div class="chrome"><i></i><i></i><i></i></div>
+      <img src="assets/shot-desktop.png" alt="The TESSERA console showing one customer record with a provenance note on every field and three conflicts flagged for resolution." width="1440" height="900">
+    </div>
+  </div>
+</header>
+
+<section id="what">
+  <div class="wrap">
+    <h2>What it actually does</h2>
+    <p class="sub">Not a dashboard over a spreadsheet. Every screen is a decision you can act on, and every action is recorded.</p>
+    <div class="cols">
+      <div class="card">
+        <span class="tag">01 · merge</span>
+        <h3>Field-level, not record-level</h3>
+        <p>Email comes from HubSpot because it owns it. The deal amount comes from NetSuite because it owns
+          that. A field nobody owns falls back to trust, then to you.</p>
+      </div>
+      <div class="card">
+        <span class="tag">02 · resolve</span>
+        <h3>The rule is shown before the answer</h3>
+        <p>Every disagreement names the rule that decides it — authority map, trust score, or human review —
+          so you are approving a mechanism, not guessing at one.</p>
+      </div>
+      <div class="card">
+        <span class="tag">03 · prove</span>
+        <h3>The ledger verifies in your browser</h3>
+        <p>Each event is SHA-256 hashed against the one before it. Press verify and the page recomputes the
+          chain locally. Alter one event and it fails at that sequence number.</p>
+      </div>
+      <div class="card">
+        <span class="tag">04 · route</span>
+        <h3>Work goes to a position</h3>
+        <p>Tasks are assigned to seats, not people. A human or an agent fills the seat, and the router shows
+          its term-by-term arithmetic for why it picked the one it did.</p>
+      </div>
+      <div class="card">
+        <span class="tag">05 · approve</span>
+        <h3>Agent playbooks are proposals</h3>
+        <p>A workflow authored by an agent cannot run until a person approves it. The button says
+          <em>Approve first</em> and it is disabled, because that is what the rule is.</p>
+      </div>
+      <div class="card">
+        <span class="tag">06 · offline</span>
+        <h3>Nothing leaves the device</h3>
+        <p>No network calls after first load. State lives in localStorage, the service worker caches the
+          shell, and the ledger is rebuilt locally if you clear it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="proof">
+  <div class="wrap">
+    <h2>Three screens, no marketing</h2>
+    <p class="sub">These are screenshots of the running app, not mockups. The data is a seeded demo; the logic is the engine's.</p>
+    <div class="two">
+      <figure>
+        <img src="assets/shot-conflicts.png" alt="The Resolve screen listing two disagreeing systems for a field, each with a Keep this button and the rule the engine would apply." width="1440" height="900">
+        <figcaption><b>Resolve.</b> Both values, both trust scores, and the rule that would win.</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/shot-ledger.png" alt="The Ledger screen listing hash-chained events with a verify button and a tamper button." width="1440" height="900">
+        <figcaption><b>Ledger.</b> Verify recomputes SHA-256 in the page. Tamper proves the verification works.</figcaption>
+      </figure>
+    </div>
+    <div class="two" style="margin-top:18px">
+      <figure class="mobile">
+        <img src="assets/shot-mobile.png" alt="The console on a phone: a single column record with a bottom tab bar." width="390" height="844">
+        <figcaption><b>Phone.</b> Same app, one column, bottom tabs, 44px targets.</figcaption>
+      </figure>
+      <div class="card">
+        <h3>Built to be used, not scrolled</h3>
+        <p style="margin-bottom:14px">A left rail on a laptop becomes a bottom bar on a phone. Rows collapse
+          to label, value, provenance. Nothing is hidden behind a hamburger.</p>
+        <table>
+          <tr><th>Property</th><th>Value</th></tr>
+          <tr><td>Contrast</td><td><b>≥ 4.5:1</b> on every text pair, measured</td></tr>
+          <tr><td>Touch targets</td><td><b>44px</b> minimum</td></tr>
+          <tr><td>Keyboard</td><td><b>1–6</b> switch sections, <b>T</b> toggles theme</td></tr>
+          <tr><td>Dependencies</td><td><b>none</b> — no framework, no build step</td></tr>
+          <tr><td>Payload</td><td><b>one HTML file</b> plus a service worker</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="honest">
+  <div class="wrap">
+    <h2>What this is not</h2>
+    <p class="sub">The same honesty the engine repository runs on.</p>
+    <div class="cols">
+      <div class="card">
+        <h3>Not connected to your systems</h3>
+        <p>This console runs on seeded data. The real connectors exist in the engine and have never touched a
+          live tenant — that gap is documented, not glossed.</p>
+      </div>
+      <div class="card">
+        <h3>Not a backend</h3>
+        <p>There is no server, no database and no auth here. It is a demonstration of the logic, installable
+          and offline, so you can judge the behaviour before reading the specification.</p>
+      </div>
+      <div class="card">
+        <h3>Not audited</h3>
+        <p>The hashing is Web Crypto. The key handling in the engine is a reference construction and says so.
+          Nothing here should hold real customer data.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Run it</h2>
+    <p class="sub">Three ways, none of which need a build step.</p>
+    <pre><code># 1. in place
+open app/index.html
+
+# 2. any static server
+python3 -m http.server 8000     # then /app/
+
+# 3. install it
+# open /app/ in Chrome or Edge, then "Install TESSERA" from the address bar</code></pre>
+    <p class="sub" style="margin-top:22px">
+      For a desktop binary, wrap the folder with Tauri or Electron — the app is a static page, so either takes
+      minutes. For Android, a Trusted Web Activity over the hosted URL gives a real APK from the same files.
+      Both paths are written up in <a href="https://github.com/drsamonline/tessera-app/blob/main/BUILDING.md">BUILDING.md</a>.
+    </p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <b>TESSERA</b><br>
+      A console for the TESSERA reference core.<br>
+      Built by <b>Dr Sohil Momin</b>.
+    </div>
+    <div>
+      <b>Licence</b><br>
+      PolyForm Noncommercial 1.0.0.<br>
+      Commercial use needs a licence — see the
+      <a href="https://github.com/drsamonline/tessera-app/blob/main/LICENSE">LICENSE</a>.
+    </div>
+    <div>
+      <b>Support the work</b><br>
+      <a href="https://ko-fi.com/matneo">ko-fi.com/matneo</a><br>
+      <a href="https://github.com/sponsors/drsamonline">GitHub Sponsors</a>
+    </div>
+    <div>
+      <b>Built on</b><br>
+      <a href="https://github.com/drsamonline/tessera">drsamonline/tessera</a> —
+      the specification and reference core.<br>
+      <a href="https://github.com/drsamonline/tessera-app">Source for this page</a>
+    </div>
+  </div>
+</footer>
+</body>
+</html>
