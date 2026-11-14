@@ -292,6 +292,51 @@ a{color:var(--accent)}
 @media (prefers-reduced-motion:reduce){
   *{transition:none !important; animation:none !important}
 }
+
+/* ---- the one-pager -------------------------------------------------------
+   What a person prints is the record, its provenance, its activity and the
+   chain head — not the app. Every control is hidden, the theme is forced to
+   paper, and the two columns become one. */
+.print-only{display:none}
+@media print{
+  /* override the tokens, not every rule: the cards keep their own background,
+     and a dark card on white paper is unreadable. */
+  html[data-theme],html[data-theme="light"],html[data-theme="dark"]{
+    --bg:#fff; --surface:#fff; --raise:#fff; --line:#b8b8b8;
+    --text:#111; --muted:#555; --accent:#111; --accent-ink:#fff;
+    --teal:#444; --danger:#111; --ok:#111;
+  }
+  @page{margin:12mm}
+  html,body{background:#fff;color:#111;font-size:10.5pt}
+  .app{display:block;height:auto}
+  .rail,.tabs,.bar,#toast,#hist,#imp,#pal,.rowaction,.btn,.chip,.avatar,
+  .frow .rowaction,#connectors,.view h1,.view .sub{display:none !important}
+  .main{overflow:visible}
+  .view{display:none !important;padding:0}
+  .view[data-active]{display:block !important}
+  .grid2{grid-template-columns:1fr;gap:6mm}
+  .card{border:1px solid #b8b8b8;border-radius:0;break-inside:avoid;margin-bottom:5mm}
+  .card > header{padding:6px 10px;font-size:8.5pt;color:#555;border-bottom:1px solid #b8b8b8}
+  .card .body{padding:8px 10px}
+  .record{padding:8px 10px;border-bottom:1px solid #b8b8b8}
+  .record .who b{font-size:12pt}
+  .frow{border-top:1px solid #ddd;min-height:0;padding:4px 10px;font-size:9.5pt}
+  .frow .v{color:#111}
+  .frow .src{color:#555;font-size:8.5pt}
+  .frow[data-conflict]{background:none}
+  .frow[data-conflict] .v{color:#111;font-weight:600}
+  .frow[data-conflict] .src::after{content:" (unresolved conflict)"}
+  .tl li{padding-bottom:8px}
+  .tl li::before{background:#666;box-shadow:none}
+  .tl time{font-size:8pt;color:#666}
+  .tl p{font-size:9.5pt}
+  .print-only{display:block}
+  .print-head{display:flex !important;justify-content:space-between;gap:8mm;
+    font-size:8.5pt;color:#555;border-bottom:2px solid #111;padding-bottom:2mm;margin-bottom:5mm}
+  .print-head b{color:#111;letter-spacing:.08em}
+  a{color:#111;text-decoration:none}
+}
+}
 </style>
 </head>
 <body>
@@ -351,8 +396,13 @@ a{color:var(--accent)}
         <button class="rowaction" id="exportJson">Export JSON</button>
         <button class="rowaction" id="exportCsv">Export CSV</button>
         <button class="rowaction" id="copyLink">Copy link</button>
+        <button class="rowaction" id="printOne">Print record</button>
       </div>
 
+      <div class="print-only print-head">
+        <b>TESSERA — customer record</b>
+        <span id="printMeta"></span>
+      </div>
       <div class="strip" id="connectors" aria-label="Connected systems"></div>
 
       <div class="grid2">
@@ -1320,6 +1370,11 @@ function renderAll() {
   $("#recordSubtitle").textContent = `${record.role} · ${record.company}`;
   $("#recordAvatar").textContent = record.name.split(" ").map(p => p[0]).join("").slice(0, 2);
   $("#healthChip").textContent = `Relationship health ${record.health}`;
+  const head = state.ledger && state.ledger.length
+    ? state.ledger[state.ledger.length - 1].hash.slice(0, 16) : "not built";
+  $("#printMeta").textContent =
+    `${record.name} · ${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC · ` +
+    `chain head ${head}… · ${Object.keys(record.fields).filter(isConflict).length} open conflict(s)`;
   renderRecords(); renderConnectors();
   renderFields(); renderTimeline(); renderRules(); renderConflicts(); renderLedger(); renderSeats();
   renderRouting(); renderWorkflows();
@@ -1690,6 +1745,11 @@ $("#exportCsv").onclick = () => {
   toast("Exported as CSV");
 };
 
+$("#printOne").onclick = () => {
+  appendEvent("record.printed", "human", { record: state.selected });
+  window.print();
+};
+
 $("#copyLink").onclick = async () => {
   const url = `${location.origin}${location.pathname}#unified/${state.selected}`;
   try {
@@ -1850,6 +1910,16 @@ document.addEventListener("keydown", event => {
   RECORD = record.fields;
   ACTIVITY = record.activity;
   renderAll();
+  // a shared link or text from the OS share sheet lands in the search box
+  const shared = new URLSearchParams(location.search);
+  const sharedText = (shared.get("text") || shared.get("title") || "").trim();
+  if (sharedText) {
+    state.query = sharedText.slice(0, 60);
+    save();
+    go("records");
+    toast(`Searching for “${state.query}”`);
+  }
+
   const route = routeFromHash();
   if (route) {
     if (route.recordId && allRecords().some(r => r.id === route.recordId)) {

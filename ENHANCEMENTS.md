@@ -19,13 +19,13 @@ Ordered by what a person would notice first.
 | 6 | ~~**Connector status strip**~~ — last sync, error count and staleness per system, shipped in 1.6.0 | The one screen an operator actually needs at 9am | done |
 | 7 | ~~**CSV import with dry run**~~ — paste or choose a file, auto-mapped columns, ready/rejected counts, one-press rollback, shipped in 1.5.0 | The single most requested feature of every CRM migration | done |
 | 8 | ~~**Saved resolver rules**~~ — an **Always** button on any candidate, applied to every record, shipped in 1.6.0 | Repeated decisions should become policy, not habit | done |
-| 9 | ~~**Export the unified record**~~ — JSON and CSV shipped in 1.4.0. **Printable one-pager** still open | People need to send the record to somebody who is not in the app | S |
+| 9 | ~~**Export the unified record**~~ — JSON and CSV in 1.4.0, print in 1.8.0. The print output is the record page plus an activity page, not strictly one page | People need to send the record to somebody who is not in the app | done |
 | 10 | ~~**Keyboard-first command palette**~~ — `⌘K`, actions and records, shipped in 1.7.0 | The power users are the ones who will keep it open | done |
 | 11 | ~~**Deep links**~~ — `#unified/c4` and a Copy link button, shipped in 1.4.0 | Makes the app shareable in Slack, which is how tools spread | done |
 | 12 | **Notes and mentions** — a comment thread per record, stored locally | A record without a conversation is a report | M |
 | 13 | ~~**Assign to me**~~ — one tap, logged, undoable, shipped in 1.7.0 | The most common action in any support tool | done |
 | 14 | **Undo** — shipped for resolve (1.3.0), assign and escalate (1.7.0). **Still to do:** workflow fire | Undo by compensating event is the ledger's superpower and nothing used it | M |
-| 15 | **Mobile share target** — register as a share target so a contact can be pasted in | The only way a phone app gets used | S |
+| 15 | ~~**Mobile share target**~~ — `share_target` in the manifest, shared text lands in the search box, shipped in 1.8.0 | The only way a phone app gets used | done |
 
 **S = hours, M = a day or two, L = a week.** Nothing here adds a dependency.
 

@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.8.0] - 2026-11-14
+
+### Added
+
+- **Print.** A `@media print` stylesheet that overrides the **design tokens** rather than every rule — the cards keep
+  their own background, and a dark card on white paper is unreadable. The output is the record with provenance under
+  every value, unresolved conflicts marked, the chain head in the header, then the activity on a second page.
+  A sample is committed at `assets/one-pager.pdf`.
+- **Share target.** The manifest registers the app as an OS share destination; shared text or a URL lands in the
+  search box on open.
+
+### Note on the first attempt
+
+The first print stylesheet set `body { background: #fff }` and left the cards dark, so the whole record printed
+dark-on-dark. Rendering the PDF and looking at it caught it in one pass; nothing about the CSS looked wrong.
+
 ## [1.7.0] - 2026-11-14
 
 ### Added
