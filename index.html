@@ -84,6 +84,16 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .card .body{padding:14px}
 
 /* record head */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:var(--gap)}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
+.kpi b{display:block;font-size:26px;font-weight:650;letter-spacing:-.02em}
+.kpi span{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.bar{display:grid;grid-template-columns:110px minmax(0,1fr) 46px;gap:10px;align-items:center;
+  margin:7px 0;font-size:12.5px}
+.bar .track{display:block;height:8px;border-radius:999px;background:var(--raise);overflow:hidden}
+.bar .fill{display:block;height:100%;border-radius:999px;background:var(--accent);min-width:2px}
+.bar > span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar .n{text-align:right;font-family:var(--mono);font-size:11.5px;color:var(--muted)}
 .strip{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:var(--gap)}
 .conn{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;
   border:1px solid var(--line);background:var(--surface);font-size:12px;color:var(--muted)}
@@ -127,7 +137,11 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .empty{padding:24px 14px;color:var(--muted);font-size:13.5px;text-align:center}
 kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-bottom-width:2px;
   border-radius:5px;padding:1px 5px;background:var(--raise)}
-.frow{display:grid;grid-template-columns:132px minmax(0,1fr) auto auto;gap:10px 14px;
+.editbtn{width:30px;height:30px;border-radius:8px;border:1px solid transparent;color:var(--muted);
+  font-size:13px;opacity:.55;transition:opacity var(--fast),border-color var(--fast)}
+.frow:hover .editbtn{opacity:1;border-color:var(--line-control)}
+.editbtn:hover{color:var(--accent);border-color:var(--accent)}
+.frow{display:grid;grid-template-columns:132px minmax(0,1fr) auto auto auto;gap:10px 14px;
   align-items:center;padding:12px 14px;border-top:1px solid var(--line);min-height:54px;
   transition:background var(--fast)}
 .frow:first-child{border-top:0}
@@ -215,6 +229,11 @@ a{color:var(--accent)}
   border-radius:var(--r-sm);font-size:13.5px;min-height:44px;color:var(--text)}
 .pal-item[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
 .pal-item .kind{margin-left:auto;font-size:10.5px;font-family:var(--mono);opacity:.7}
+#edit{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;display:grid;place-items:center;
+  padding:16px;backdrop-filter:blur(2px)}
+#edit[hidden]{display:none}
+@media (max-width:640px){#edit{place-items:end center;padding:0}
+  #edit .sheet{width:100%;border-radius:var(--r-lg) var(--r-lg) 0 0}}
 #new{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;display:grid;place-items:center;
   padding:16px;backdrop-filter:blur(2px)}
 #new[hidden]{display:none}
@@ -378,6 +397,9 @@ a{color:var(--accent)}
     <button data-go="automations" title="Automations">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M3 12h4l3 7 4-14 3 7h4"/></svg>
       <span>Automate</span></button>
+    <button data-go="report" title="Report">
+      <span class="ico" aria-hidden="true">▤</span><span>Report</span>
+    </button>
     <button data-go="settings" title="Settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/></svg>
       <span>Settings</span></button>
@@ -566,6 +588,26 @@ a{color:var(--accent)}
     </section>
 
     <!-- SETTINGS --------------------------------------------------------- -->
+    <section class="view" id="report">
+      <h1>Report</h1>
+      <p class="sub">What is in the system, where it came from, and what is not decided yet.</p>
+      <div class="kpis" id="reportKpis"></div>
+      <div class="grid2">
+        <div class="card">
+          <header>Pipeline by stage</header>
+          <div class="body" id="reportPipeline"></div>
+        </div>
+        <div class="card">
+          <header>Where the data comes from</header>
+          <div class="body" id="reportSources"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:var(--gap)">
+        <header>Completeness</header>
+        <div class="body" id="reportCompleteness"></div>
+      </div>
+    </section>
+
     <section class="view" id="settings">
       <h1>Settings</h1>
       <p class="sub">Preferences are stored on this device. Nothing leaves the browser.</p>
@@ -659,6 +701,8 @@ a{color:var(--accent)}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><rect x="5" y="3" width="14" height="12"/><path d="M5 15v6M19 15v6"/></svg><span>Work</span></button>
     <button data-go="automations">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M3 12h4l3 7 4-14 3 7h4"/></svg><span>Automate</span></button>
+    <button data-go="report">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span>Report</span></button>
     <button data-go="settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/></svg><span>Settings</span></button>
   </nav>
@@ -669,6 +713,24 @@ a{color:var(--accent)}
     <input id="palInput" type="text" placeholder="Jump to a customer, or type a command…"
            autocomplete="off" spellcheck="false">
     <div id="palList" role="listbox" aria-label="Commands"></div>
+  </div>
+</div>
+<div id="edit" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+    <div class="sheet-head">
+      <b id="editTitle">Edit field</b>
+      <button class="iconbtn" id="editClose" aria-label="Close">✕</button>
+    </div>
+    <div class="sheet-body">
+      <p class="note" id="editWhere" style="margin:0 0 12px"></p>
+      <label class="field"><span id="editLabel">Value</span>
+        <input id="editValue" autocomplete="off"></label>
+      <p class="note" id="editStatus"></p>
+      <div class="row" style="margin-top:10px">
+        <button class="btn primary" id="editSave">Save</button>
+        <button class="btn" id="editCancel">Cancel</button>
+      </div>
+    </div>
   </div>
 </div>
 <div id="new" hidden>
@@ -960,6 +1022,17 @@ function allRecords() {
   return RECORDS.concat(state.customRecords || []);
 }
 
+async function loadEngineDeals() {
+  state.engineDeals = [];
+  try {
+    const listing = await engineFetch("/v1/objects/Deal");
+    for (const id of listing.ids) {
+      const detail = await engineFetch(`/v1/objects/Deal/${id}`);
+      state.engineDeals.push(detail.record || {});
+    }
+  } catch { state.engineDeals = []; }
+}
+
 /* The engine's records, in the shape this console renders. A field the engine
    resolved comes with its source and rule, which is exactly what a provenance
    line needs - so the live view is not a lesser view. */
@@ -995,6 +1068,7 @@ async function loadEngineRecords() {
     });
   }
   state.engineRecords = records;
+  await loadEngineDeals();
   // the selection was a demo id; point it at a record that now exists
   if (records.length && !records.some(record => record.id === state.selected)) {
     state.selected = records[0].id;
@@ -1519,7 +1593,9 @@ function renderFields() {
     row.innerHTML = `
       <div class="k">${label}</div>
       <button class="v" type="button" data-hist="${field}" title="See every write to this field">${formatValue(field, value)}</button>
-      <div class="src">${sourceLabel(node)} · ${rule.replace(/_/g, " ")}</div>`;
+      <div class="src">${sourceLabel(node)} · ${rule.replace(/_/g, " ")}</div>
+      <button class="editbtn" type="button" data-edit="${field}" aria-label="Edit ${label}"
+        title="Edit this field">✎</button>`;
     if (isConflict(field)) {
       const btn = document.createElement("button");
       btn.className = "rowaction";
@@ -1530,10 +1606,77 @@ function renderFields() {
     host.appendChild(row);
   }
   $$("[data-hist]", host).forEach(btn => btn.onclick = () => openHistory(btn.dataset.hist));
+  $$("[data-edit]", host).forEach(btn => btn.onclick = () => openEdit(btn.dataset.edit));
   const count = Object.keys(RECORD).filter(isConflict).length;
   const chip = $("#conflictCount");
   chip.textContent = count === 1 ? "1 conflict" : `${count} conflicts`;
   chip.className = count ? "chip warn" : "chip ok";
+}
+
+function renderReport() {
+  const records = allRecords();
+  const openConflicts = records.reduce((total, record) =>
+    total + Object.keys(record.fields).filter(field => {
+      const previous = RECORD;
+      RECORD = record.fields;
+      const conflict = isConflict(field);
+      RECORD = previous;
+      return conflict;
+    }).length, 0);
+  const deals = state.engineDeals || [];
+
+  $("#reportKpis").innerHTML = [
+    ["Contacts", records.length],
+    ["Open conflicts", openConflicts],
+    ["Deals", deals.length || "—"],
+    ["Pipeline", deals.length
+      ? formatValue("amount_minor", deals.reduce((sum, deal) => sum + (deal.amount_minor || 0), 0))
+      : "—"],
+  ].map(([label, value]) => `<div class="kpi"><b>${value}</b><span>${label}</span></div>`).join("");
+
+  // pipeline by stage, drawn with divs: a chart library for five bars is a dependency
+  const byStage = {};
+  for (const deal of deals) byStage[deal.stage || "unknown"] = (byStage[deal.stage || "unknown"] || 0) + 1;
+  const stages = Object.entries(byStage).sort((a, b) => b[1] - a[1]);
+  const most = Math.max(1, ...stages.map(([, count]) => count));
+  $("#reportPipeline").innerHTML = stages.length
+    ? stages.map(([stage, count]) => `
+        <div class="bar"><span>${stage}</span>
+          <span class="track"><span class="fill" style="width:${(count / most) * 100}%"></span></span>
+          <span class="n">${count}</span></div>`).join("")
+    : `<p class="note">No deals yet. ${state.engine && state.engine.live
+        ? "The engine has none for this tenant."
+        : "Connect an engine to read them."}</p>`;
+
+  // which node supplied how many fields, across every record
+  const sources = {};
+  for (const record of records) {
+    for (const field of Object.keys(record.fields)) {
+      const previous = RECORD;
+      RECORD = record.fields;
+      const { node } = currentValue(field);
+      RECORD = previous;
+      const label = sourceLabel(node);
+      sources[label] = (sources[label] || 0) + 1;
+    }
+  }
+  const totalFields = Object.values(sources).reduce((a, b) => a + b, 0) || 1;
+  $("#reportSources").innerHTML = Object.entries(sources)
+    .sort((a, b) => b[1] - a[1])
+    .map(([label, count]) => `
+      <div class="bar"><span>${label}</span>
+        <span class="track"><span class="fill" style="width:${(count / totalFields) * 100}%"></span></span>
+        <span class="n">${Math.round((count / totalFields) * 100)}%</span></div>`).join("");
+
+  const wanted = ["full_name", "email", "phone", "company_ref"];
+  const rows = records.map(record => {
+    const filled = wanted.filter(field => record.fields[field]).length;
+    return { name: record.name, filled, of: wanted.length };
+  }).sort((a, b) => a.filled - b.filled).slice(0, 8);
+  $("#reportCompleteness").innerHTML = rows.map(row => `
+    <div class="bar"><span>${row.name}</span>
+      <span class="track"><span class="fill" style="width:${(row.filled / row.of) * 100}%"></span></span>
+      <span class="n">${row.filled}/${row.of}</span></div>`).join("");
 }
 
 function renderConnectors() {
@@ -1865,7 +2008,7 @@ function renderAll() {
   $("#printMeta").textContent =
     `${record.name} · ${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC · ` +
     `chain head ${head}… · ${Object.keys(record.fields).filter(isConflict).length} open conflict(s)`;
-  renderRecords(); renderConnectors(); renderNotes();
+  renderRecords(); renderConnectors(); renderNotes(); renderReport();
   renderFields(); renderTimeline(); renderRules(); renderConflicts(); renderLedger(); renderSeats();
   renderRouting(); renderWorkflows();
   $("#storageNote").textContent =
@@ -1910,6 +2053,7 @@ document.addEventListener("keydown", event => {
     if (!$("#hist").hidden) closeHistory();
     if (!$("#imp").hidden) closeImport();
     if (!$("#new").hidden) closeSheet("#new");
+    if (!$("#edit").hidden) closeSheet("#edit");
   }
 });
 
@@ -1923,6 +2067,7 @@ function palCommands() {
     { label: "Go to Ledger", kind: "go", run: () => go("ledger") },
     { label: "Go to Workforce", kind: "go", run: () => go("workforce") },
     { label: "Go to Automate", kind: "go", run: () => go("automations") },
+    { label: "Go to Report", kind: "go", run: () => go("report") },
     { label: "Go to Settings", kind: "go", run: () => go("settings") },
     { label: "Import a CSV", kind: "action", run: () => { closePalette(); openImport(); } },
     { label: "Verify the ledger chain", kind: "action", run: () => { go("ledger"); $("#verify").click(); } },
@@ -1988,6 +2133,97 @@ $("#palInput").onkeydown = event => {
   if (event.key === "Enter") { event.preventDefault(); runPalette(palIndex); }
 };
 $("#pal").onclick = event => { if (event.target.id === "pal") closePalette(); };
+
+/* ---- edit one field ----------------------------------------------------- */
+let editingField = null;
+
+function openEdit(field) {
+  editingField = field;
+  const current = currentValue(field);
+  $("#editLabel").textContent = field.replace(/_/g, " ");
+  $("#editValue").value = current.value === null || current.value === undefined
+    ? "" : String(current.value);
+  $("#editWhere").textContent =
+    `Currently ${current.value} from ${sourceLabel(current.node)}. A save writes to the system of record ` +
+    `and the ledger records who changed it, what it was, and what it became.`;
+  $("#editStatus").textContent = "";
+  openSheet("#edit");
+  $("#editValue").focus();
+}
+
+async function saveEdit() {
+  const field = editingField;
+  const status = $("#editStatus");
+  const before = currentValue(field).value;
+  let after = $("#editValue").value;
+  if (field === "amount_minor") {
+    const digits = String(after).replace(/[^0-9.]/g, "");
+    after = Math.round(Number(digits) * 100);
+    if (!Number.isFinite(after)) { status.textContent = "That is not an amount."; return; }
+  }
+  if (String(after) === String(before)) { status.textContent = "Unchanged."; return; }
+
+  status.textContent = "Saving…";
+  try {
+    if (state.engine && state.engine.live) {
+      const response = await fetch(
+        `${state.engine.url}/v1/objects/Contact/${state.selected}/fields/${field}`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${state.engine.token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ value: after }),
+        });
+      const payload = await response.json();
+      if (!response.ok) {
+        status.textContent = payload.detail || payload.error || `Failed: ${response.status}`;
+        return;
+      }
+      await loadEngineRecords();
+      state.selected = state.selected;
+      RECORD = activeRecord().fields;
+      ACTIVITY = activeRecord().activity;
+      save();
+      closeSheet("#edit");
+      renderAll();
+      toast(`${field.replace(/_/g, " ")} saved to ${payload.node || "the system of record"}`,
+            () => revertField(field, before));
+    } else {
+      const record = activeRecord();
+      record.fields[field] = { native: after };
+      save();
+      closeSheet("#edit");
+      renderAll();
+      toast(`${field.replace(/_/g, " ")} saved in this browser`, () => revertField(field, before));
+    }
+  } catch (error) {
+    status.textContent = `Could not save: ${error.message}`;
+  }
+}
+
+async function revertField(field, value) {
+  try {
+    if (state.engine && state.engine.live) {
+      await fetch(`${state.engine.url}/v1/objects/Contact/${state.selected}/fields/${field}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${state.engine.token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ value }),
+      });
+      await loadEngineRecords();
+    } else {
+      activeRecord().fields[field] = { native: value };
+      save();
+    }
+    renderAll();
+    toast("Reverted — the change stays in the chain");
+  } catch {
+    toast("Could not revert");
+  }
+}
+
+$("#editClose").onclick = () => closeSheet("#edit");
+$("#editCancel").onclick = () => closeSheet("#edit");
+$("#editSave").onclick = saveEdit;
+$("#edit").onclick = event => { if (event.target.id === "edit") closeSheet("#edit"); };
+$("#editValue").onkeydown = event => { if (event.key === "Enter") saveEdit(); };
 
 /* ---- create a record ---------------------------------------------------- */
 function openNew() {
@@ -2204,7 +2440,7 @@ $("#impFile").onchange = event => {
   reader.readAsText(file);
 };
 
-["#hist", "#imp", "#pal", "#new"].forEach(id => trapFocus($(id)));
+["#hist", "#imp", "#pal", "#new", "#edit"].forEach(id => trapFocus($(id)));
 
 /* ---- navigation --------------------------------------------------------- */
 function go(view, recordId) {

@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.17.0] - 2026-11-15
+
+### Added
+
+- **Edit any field.** A pencil on each row of the Unified view opens a sheet with the current value and where it came
+  from; saving writes to the system of record and the ledger records who changed it, from what, to what. Undo is a
+  compensating write, not a rollback.
+- **Report.** An eighth section: contacts, open conflicts, deals and pipeline value; pipeline by stage; which system
+  supplied what share of the fields; per-record completeness. Verified against a live engine — six contacts, four
+  deals, ₹2,04,000.00 of pipeline.
+
+### Fixed
+
+- **The report's bars were invisible.** `.track` and `.fill` are `<span>` elements, and a span is inline — `height` and
+  `width` did nothing, so every bar painted as a one-pixel line. `display:block` fixes it.
+- **Deals were never fetched.** `loadEngineDeals()` existed but nothing called it, so the Report showed "—" for deals
+  and pipeline against a connected engine that had four of them.
+- The accessibility harness pointed at `index.html` from inside `tests/`, which 404'd.
+
 ## [1.16.0] - 2026-11-14
 
 ### Added
