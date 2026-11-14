@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.3.0] - 2026-11-14
+
+### Added
+
+- **Bulk resolve.** One button applies the engine's own rule to every open conflict on a record, as a single
+  ledger event, and tells you how many it took.
+- **Undo.** Resolving a field, or all of them, shows an Undo button in the toast for nine seconds. Undo writes a
+  **compensating event** - `conflict.reopened` - and restores the previous state. The original choice stays in the
+  chain, because a ledger that deletes is not a ledger.
+
+### Why undo matters here
+
+Every other tool in this category implements undo as a state rollback. In an append-only ledger the honest version
+is a new event that reverses the old one, which is also the version that survives an audit. The app now demonstrates
+that rather than describing it.
+
 ## [1.2.0] - 2026-11-14
 
 ### Added

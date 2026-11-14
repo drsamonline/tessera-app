@@ -204,7 +204,10 @@ a{color:var(--accent)}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(74px + env(safe-area-inset-bottom));
   background:var(--raise);border:1px solid var(--line);border-radius:999px;padding:10px 16px;font-size:13px;
   opacity:0;pointer-events:none;transition:opacity var(--base);z-index:60;max-width:92vw}
-#toast[data-show]{opacity:1}
+#toast[data-show]{opacity:1;pointer-events:auto}
+#toast .undo{margin-left:12px;border:1px solid var(--accent);color:var(--accent);
+  border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600}
+#toast .undo:hover{background:var(--accent);color:var(--accent-ink)}
 
 /* ---- small screens ------------------------------------------------------- */
 @media (max-width:860px){
@@ -344,6 +347,10 @@ a{color:var(--accent)}
     <section class="view" id="conflicts">
       <h1>Resolve</h1>
       <p class="sub">Where two systems disagree, the rule that decides is shown before you choose.</p>
+      <div class="row" style="margin-bottom:12px">
+        <button class="btn primary" id="resolveAll">Resolve all with the engine's rule</button>
+        <span class="note" id="conflictSummary"></span>
+      </div>
       <div id="conflictList"></div>
     </section>
 
@@ -760,12 +767,20 @@ async function verifyChain() {
 }
 
 /* ---- rendering ---------------------------------------------------------- */
-function toast(message) {
+function toast(message, onUndo) {
   const el = $("#toast");
-  el.textContent = message;
+  el.textContent = "";
+  el.append(document.createTextNode(message));
+  if (onUndo) {
+    const button = document.createElement("button");
+    button.className = "undo";
+    button.textContent = "Undo";
+    button.onclick = () => { el.removeAttribute("data-show"); onUndo(); };
+    el.append(button);
+  }
   el.setAttribute("data-show", "");
   clearTimeout(toast._t);
-  toast._t = setTimeout(() => el.removeAttribute("data-show"), 2400);
+  toast._t = setTimeout(() => el.removeAttribute("data-show"), onUndo ? 9000 : 2400);
 }
 
 function currentValue(field) {
@@ -891,12 +906,67 @@ function renderTimeline() {
     <li><time>${item.at} · ${NODES[item.node].label}</time><p>${item.text}</p></li>`).join("");
 }
 
+function engineWinner(field) {
+  const candidates = RECORD[field] || {};
+  const authority = Object.fromEntries(Object.entries(candidates).map(([node]) =>
+    [node, NODES[node].authority[field] || "bidirectional"]));
+  return resolveField(field, candidates, authority);
+}
+
+async function resolveFieldTo(field, node) {
+  const key = state.selected + "|" + field;
+  const before = state.resolved[key];
+  state.resolved[key] = node;
+  save();
+  await appendEvent("conflict.resolved", "human", { field, winner: node });
+  renderAll();
+  toast(`Kept ${NODES[node].label} for ${field.replace(/_/g, " ")}`, async () => {
+    if (before === undefined) delete state.resolved[key];
+    else state.resolved[key] = before;
+    save();
+    await appendEvent("conflict.reopened", "human", { field, was: node });
+    renderAll();
+    toast("Reverted - the conflict is open again");
+  });
+}
+
+async function resolveAll() {
+  const fields = Object.keys(RECORD).filter(isConflict);
+  if (!fields.length) { toast("Nothing to resolve on this record"); return; }
+  const before = { ...state.resolved };
+  const winners = {};
+  for (const field of fields) {
+    const winner = engineWinner(field);
+    state.resolved[state.selected + "|" + field] = winner.node;
+    winners[field] = winner.node;
+  }
+  save();
+  await appendEvent("conflict.bulk_resolved", "human", { fields: fields.length, winners });
+  renderAll();
+  toast(`${fields.length} resolved by the engine's rule`, async () => {
+    state.resolved = before;
+    save();
+    await appendEvent("conflict.bulk_reopened", "human", { fields: fields.length });
+    renderAll();
+    toast("Reverted - every conflict is open again");
+  });
+}
+
 function renderConflicts() {
   const host = $("#conflictList");
   const fields = Object.keys(RECORD).filter(isConflict);
+  $("#conflictSummary").textContent = fields.length
+    ? `${fields.length} open on this record`
+    : "nothing open on this record";
+  $("#resolveAll").disabled = fields.length === 0;
+  $("#resolveAll").style.opacity = fields.length === 0 ? ".5" : "1";
   if (!fields.length) {
     host.innerHTML = `<div class="card"><div class="body"><p class="note">
-      Nothing to resolve. Every field agrees, or you have already chosen.</p></div></div>`;
+      Nothing to resolve. Every field agrees, or you have already chosen.
+      <button class="rowaction" id="toRecords" style="margin-left:10px">Pick another customer</button>
+      </p></div></div>`;
+    const jump = $("#toRecords");
+    if (jump) jump.onclick = () => go("records");
     return;
   }
   host.innerHTML = fields.map(field => {
@@ -919,13 +989,9 @@ function renderConflicts() {
     </div>`;
   }).join("");
   $$("[data-pick]", host).forEach(btn => {
-    btn.onclick = async () => {
+    btn.onclick = () => {
       const [field, node] = btn.dataset.pick.split("|");
-      state.resolved[state.selected + "|" + field] = node;
-      save();
-      await appendEvent("conflict.resolved", "human", { field, winner: node });
-      renderAll();
-      toast(`Kept ${NODES[node].label}'s value for ${field.replace(/_/g, " ")}`);
+      resolveFieldTo(field, node);
     };
   });
 }
@@ -1173,6 +1239,8 @@ $("#reset").onclick = async () => {
 };
 
 /* ---- workforce actions -------------------------------------------------- */
+$("#resolveAll").onclick = () => resolveAll();
+
 $("#assign").onclick = async () => {
   const best = SEATS.map(seat => ({ seat, ...routeScore({
     capability_match: seat.capability, authority_match: 1, sla_headroom: 1 - seat.load,

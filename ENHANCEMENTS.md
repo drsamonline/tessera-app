@@ -13,7 +13,7 @@ Ordered by what a person would notice first.
 |---|---|---|---|
 | 1 | ~~**Real record search**~~ — a `/` search over all records with keyboard selection | **Shipped in 1.2.0.** Ten records, `/` to search, Enter to open | done |
 | 2 | **Multi-record list** — shipped in 1.2.0. **Saved views** (filter, sort, save, restore) still open | Turns the console from a showcase into something you would open on a Monday | M |
-| 3 | **Bulk resolve** — apply one rule to every conflict of the same kind | Resolving thirty emails one at a time is where adoption dies | S |
+| 3 | ~~**Bulk resolve**~~ — apply one rule to every conflict of the same kind | **Shipped in 1.3.0.** One button, engine's rule, undoable | done |
 | 4 | ~~**Field history popover**~~ — click any value, see every write with actor and time | **Shipped in 1.1.0.** The ledger is the differentiator; hiding it behind a tab wasted it | done |
 | 5 | **Conflict preview before merge** — a diff of what changes if you accept a rule | Turns a guess into a decision | S |
 | 6 | **Connector status strip** — per system: last sync, error count, staleness | The one screen an operator actually needs at 9am | S |
@@ -24,7 +24,7 @@ Ordered by what a person would notice first.
 | 11 | **Deep links** — `#unified/contact/123` opens that record | Makes the app shareable in Slack, which is how tools spread | S |
 | 12 | **Notes and mentions** — a comment thread per record, stored locally | A record without a conversation is a report | M |
 | 13 | **Assign to me** — a one-tap self-assign that logs a ledger event | The most common action in any support tool | S |
-| 14 | **Undo everywhere** — a 10-second undo on every mutation, as a new event | Undo by compensating event is the ledger's superpower and nothing uses it | M |
+| 14 | **Undo** — shipped for resolve and bulk resolve in 1.3.0. **Still to do:** assign, escalate, workflow fire | Undo by compensating event is the ledger's superpower and nothing used it | M |
 | 15 | **Mobile share target** — register as a share target so a contact can be pasted in | The only way a phone app gets used | S |
 
 **S = hours, M = a day or two, L = a week.** Nothing here adds a dependency.
