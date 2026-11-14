@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.7.0] - 2026-11-14
+
+### Added
+
+- **Command palette.** `⌘K` or `Ctrl+K` opens one input over twelve actions and every customer. Arrow keys move,
+  Enter runs, Escape closes. `#command` opens it directly.
+- **Assign to me.** One tap assigns the waiting task to the first human position and logs a `task.assigned` event
+  with the actor set to `human`, not `system`.
+- **Undo for assign and escalate.** Assigning is undoable, and so is escalating — withdrawing an escalation writes
+  `task.escalation_withdrawn` and clears the packet.
+
+### Measured
+
+The app is **80 KB raw, 20 KB gzipped**, up from 43 KB. The enhancements list flagged the trend; at 20 KB over the
+wire it is a watch item, not a problem, and splitting the file would break opening `index.html` from disk.
+
 ## [1.6.0] - 2026-11-14
 
 ### Added

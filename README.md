@@ -42,7 +42,7 @@ shows **where every value came from**, and records the whole thing in a hash cha
 | **Unified** | One record, with a **connector strip** above it: last sync, error count and staleness per system. Every field names the system it came from and the rule that chose it. Click any value for its write history; export the record as JSON or CSV; copy a link that opens it. |
 | **Resolve** | Both values, both trust scores, the rule the engine would apply, and whether each candidate is the **current** value or a **change**. Choose one, resolve all, or press **Always** to make it a standing rule. Every choice is logged and undoable. |
 | **Ledger** | Every event, SHA-256 chained. **Verify chain** recomputes it locally. **Tamper** proves the verification works. An undo is a new event, never a deleted one. |
-| **Workforce** | Work goes to a position, not a person. The router shows its term-by-term arithmetic. Escalation produces a signed handoff packet. |
+| **Workforce** | Work goes to a position, not a person. The router shows its term-by-term arithmetic. **Assign**, **assign to me**, or **escalate** with a signed packet — each undoable. |
 | **Automate** | A workflow written by an agent is a proposal. The run button is disabled until a person approves it. |
 | **Settings** | Theme and density, stored on this device. Nothing leaves the browser. |
 
@@ -91,10 +91,10 @@ Installed, it runs with the network switched off. The service worker caches the 
 | | |
 |---|---|
 | Dependencies | **none** — no framework, no bundler, no build |
-| Payload | one HTML file (~43 KB) plus a service worker and an icon |
+| Payload | one HTML file, 84 KB raw / 22 KB gzipped, plus a service worker and an icon |
 | Contrast | every text pair measured at **≥ 4.5:1** in both themes |
 | Touch targets | **44px** minimum; the rail becomes a bottom bar under 860px |
-| Keyboard | **1–7** switch sections, **/** searches, **T** toggles theme, full focus rings |
+| Keyboard | **⌘K** command palette, **1–7** sections, **/** search, **T** theme, full focus rings |
 | Deep links | `#unified/c4` opens that customer; `#records` opens the list |
 | Motion | honours `prefers-reduced-motion` |
 | Network | none after first load; no analytics, no fonts, no CDN |

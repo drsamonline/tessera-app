@@ -20,11 +20,11 @@ Ordered by what a person would notice first.
 | 7 | ~~**CSV import with dry run**~~ — paste or choose a file, auto-mapped columns, ready/rejected counts, one-press rollback, shipped in 1.5.0 | The single most requested feature of every CRM migration | done |
 | 8 | ~~**Saved resolver rules**~~ — an **Always** button on any candidate, applied to every record, shipped in 1.6.0 | Repeated decisions should become policy, not habit | done |
 | 9 | ~~**Export the unified record**~~ — JSON and CSV shipped in 1.4.0. **Printable one-pager** still open | People need to send the record to somebody who is not in the app | S |
-| 10 | **Keyboard-first command palette** — `⌘K` with actions, not just navigation | The power users are the ones who will keep it open | S |
+| 10 | ~~**Keyboard-first command palette**~~ — `⌘K`, actions and records, shipped in 1.7.0 | The power users are the ones who will keep it open | done |
 | 11 | ~~**Deep links**~~ — `#unified/c4` and a Copy link button, shipped in 1.4.0 | Makes the app shareable in Slack, which is how tools spread | done |
 | 12 | **Notes and mentions** — a comment thread per record, stored locally | A record without a conversation is a report | M |
-| 13 | **Assign to me** — a one-tap self-assign that logs a ledger event | The most common action in any support tool | S |
-| 14 | **Undo** — shipped for resolve and bulk resolve in 1.3.0. **Still to do:** assign, escalate, workflow fire | Undo by compensating event is the ledger's superpower and nothing used it | M |
+| 13 | ~~**Assign to me**~~ — one tap, logged, undoable, shipped in 1.7.0 | The most common action in any support tool | done |
+| 14 | **Undo** — shipped for resolve (1.3.0), assign and escalate (1.7.0). **Still to do:** workflow fire | Undo by compensating event is the ledger's superpower and nothing used it | M |
 | 15 | **Mobile share target** — register as a share target so a contact can be pasted in | The only way a phone app gets used | S |
 
 **S = hours, M = a day or two, L = a week.** Nothing here adds a dependency.
@@ -57,7 +57,7 @@ Measured, not guessed. Current payload is one HTML file of ~43 KB with no extern
 
 | # | Enhancement | Why it matters | Effort |
 |---|---|---|---|
-| 1 | **Split the HTML into shell + views, lazy-loaded** | 43 KB is fine; 400 KB will not be. Do it before it hurts | M |
+| 1 | **Split the HTML into shell + views, lazy-loaded** — measured at 80 KB raw / 20 KB gzipped in 1.7.0, so this is a *watch*, not a problem yet. Splitting would break "open index.html from disk", which is a documented feature | 43 KB was fine; 400 KB will not be. Do it before it hurts | M |
 | 2 | **Virtualise the ledger table** | It renders every row today. At 10,000 events it will not | M |
 | 3 | **Incremental chain verification** — verify from the last checkpoint, not genesis | O(n) per press today; the engine already does anchored verification | M |
 | 4 | **Web Worker for hashing** | `crypto.subtle` is async but the canonical JSON serialisation is not; move both off the main thread | S |

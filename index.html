@@ -200,6 +200,19 @@ a{color:var(--accent)}
 #hist{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;display:grid;place-items:center;
   padding:16px;backdrop-filter:blur(2px)}
 #hist[hidden],#imp[hidden]{display:none}
+#pal{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:80;display:grid;
+  place-items:start center;padding:12vh 16px 16px;backdrop-filter:blur(2px)}
+#pal[hidden]{display:none}
+.pal-sheet{width:min(560px,100%);background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--r-lg);overflow:hidden;box-shadow:0 30px 70px -30px rgba(0,0,0,.9)}
+#palInput{width:100%;border:0;border-bottom:1px solid var(--line);background:var(--surface);
+  color:var(--text);font:inherit;font-size:15px;padding:14px 16px}
+#palInput:focus{outline:none}
+#palList{max-height:52vh;overflow:auto;padding:6px}
+.pal-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 12px;
+  border-radius:var(--r-sm);font-size:13.5px;min-height:44px;color:var(--text)}
+.pal-item[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+.pal-item .kind{margin-left:auto;font-size:10.5px;font-family:var(--mono);opacity:.7}
 #imp{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;display:grid;place-items:center;
   padding:16px;backdrop-filter:blur(2px)}
 #imp .sheet{max-height:86vh}
@@ -453,6 +466,7 @@ a{color:var(--accent)}
             <div id="routing"></div>
             <div class="row" style="margin-top:12px">
               <button class="btn primary" id="assign">Assign task</button>
+              <button class="btn" id="assignMe">Assign to me</button>
               <button class="btn" id="escalate">Escalate</button>
             </div>
             <div id="packet" class="breakdown"></div>
@@ -526,6 +540,14 @@ a{color:var(--accent)}
     <button data-go="settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/></svg><span>Settings</span></button>
   </nav>
+</div>
+<div id="pal" hidden>
+  <div class="pal-sheet" role="dialog" aria-modal="true" aria-labelledby="palLabel">
+    <label class="sr" id="palLabel" for="palInput">Command</label>
+    <input id="palInput" type="text" placeholder="Jump to a customer, or type a command…"
+           autocomplete="off" spellcheck="false">
+    <div id="palList" role="listbox" aria-label="Commands"></div>
+  </div>
 </div>
 <div id="imp" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="impTitle">
@@ -1345,6 +1367,79 @@ document.addEventListener("keydown", event => {
   }
 });
 
+/* ---- command palette ---------------------------------------------------- */
+let palItems = [], palIndex = 0;
+
+function palCommands() {
+  const commands = [
+    { label: "Go to Records", kind: "go", run: () => go("records") },
+    { label: "Go to Resolve", kind: "go", run: () => go("conflicts") },
+    { label: "Go to Ledger", kind: "go", run: () => go("ledger") },
+    { label: "Go to Workforce", kind: "go", run: () => go("workforce") },
+    { label: "Go to Automate", kind: "go", run: () => go("automations") },
+    { label: "Go to Settings", kind: "go", run: () => go("settings") },
+    { label: "Import a CSV", kind: "action", run: () => { closePalette(); openImport(); } },
+    { label: "Verify the ledger chain", kind: "action", run: () => { go("ledger"); $("#verify").click(); } },
+    { label: "Export this record as JSON", kind: "action", run: () => $("#exportJson").click() },
+    { label: "Copy a link to this record", kind: "action", run: () => $("#copyLink").click() },
+    { label: "Toggle theme", kind: "action", run: () => $("#theme").click() },
+    { label: "Resolve all conflicts on this record", kind: "action", run: () => resolveAll() },
+  ];
+  for (const record of allRecords()) {
+    commands.push({ label: record.name, hint: record.company, kind: "record",
+                    run: () => openRecord(record.id) });
+  }
+  return commands;
+}
+
+function openPalette() {
+  $("#pal").hidden = false;
+  const input = $("#palInput");
+  input.value = "";
+  renderPalette("");
+  input.focus();
+}
+
+function closePalette() { $("#pal").hidden = true; }
+
+function renderPalette(query) {
+  const needle = query.trim().toLowerCase();
+  palItems = palCommands().filter(item =>
+    !needle || `${item.label} ${item.hint || ""}`.toLowerCase().includes(needle)).slice(0, 40);
+  palIndex = 0;
+  $("#palList").innerHTML = palItems.length
+    ? palItems.map((item, index) => `
+      <button class="pal-item" role="option" data-pal="${index}"
+        aria-selected="${index === palIndex}">
+        ${item.label}${item.hint ? ` <span class="mono">${item.hint}</span>` : ""}
+        <span class="kind">${item.kind}</span>
+      </button>`).join("")
+    : `<p class="empty">Nothing matches “${query}”.</p>`;
+  $$("[data-pal]").forEach(button => button.onclick = () => runPalette(Number(button.dataset.pal)));
+}
+
+function runPalette(index) {
+  const item = palItems[index];
+  if (!item) return;
+  closePalette();
+  item.run();
+}
+
+$("#palInput").oninput = event => renderPalette(event.target.value);
+$("#palInput").onkeydown = event => {
+  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+    event.preventDefault();
+    palIndex = Math.max(0, Math.min(palItems.length - 1,
+      palIndex + (event.key === "ArrowDown" ? 1 : -1)));
+    $$("[data-pal]").forEach((button, index) =>
+      button.setAttribute("aria-selected", String(index === palIndex)));
+    const active = $(`[data-pal="${palIndex}"]`);
+    if (active) active.scrollIntoView({ block: "nearest" });
+  }
+  if (event.key === "Enter") { event.preventDefault(); runPalette(palIndex); }
+};
+$("#pal").onclick = event => { if (event.target.id === "pal") closePalette(); };
+
 /* ---- CSV import --------------------------------------------------------- */
 const IMPORT_FIELDS = ["full_name", "email", "phone", "company", "stage",
                        "amount_minor", "owner", "consent"];
@@ -1670,16 +1765,31 @@ $("#reset").onclick = async () => {
 /* ---- workforce actions -------------------------------------------------- */
 $("#resolveAll").onclick = () => resolveAll();
 
-$("#assign").onclick = async () => {
+async function assignTo(seatName, occupant, actor) {
+  const before = state.assigned;
+  state.assigned = seatName;
+  save(); renderRouting();
+  await appendEvent("task.assigned", actor, { seat: seatName, occupant });
+  toast(`Assigned to ${seatName}`, async () => {
+    state.assigned = before;
+    save(); renderRouting();
+    await appendEvent("task.unassigned", "human", { seat: seatName });
+    toast("Unassigned");
+  });
+}
+
+$("#assign").onclick = () => {
   const best = SEATS.map(seat => ({ seat, ...routeScore({
     capability_match: seat.capability, authority_match: 1, sla_headroom: 1 - seat.load,
     trust_score: seat.trust, utilization: 1 - seat.load, cost_efficiency: seat.cost,
     data_freshness: 0.9, cross_boundary_penalty: seat.kind === "agent" ? 0.2 : 0,
   }) })).sort((a, b) => b.score - a.score)[0];
-  state.assigned = best.seat.name;
-  save(); renderRouting();
-  await appendEvent("task.assigned", "system", { seat: best.seat.name, occupant: best.seat.occupant });
-  toast(`Assigned to ${best.seat.name}`);
+  assignTo(best.seat.name, best.seat.occupant, "system");
+};
+
+$("#assignMe").onclick = () => {
+  const mine = SEATS.find(seat => seat.kind === "human") || SEATS[0];
+  assignTo(mine.name, "you", "human");
 };
 $("#escalate").onclick = async () => {
   if (!state.assigned) { toast("Assign the task first"); return; }
@@ -1695,14 +1805,27 @@ $("#escalate").onclick = async () => {
     `handoff packet\n  ${Object.entries(packet).filter(([k]) => k !== "state").map(([k, v]) => `${k.padEnd(8)} ${v}`).join("\n  ")}\n` +
     `  fields   ${Object.keys(packet.state).length}\n  sig      ${signature}…\n` +
     `the receiver needs nothing but this packet`;
+  const before = state.escalated;
   state.escalated = signature;
   save();
   await appendEvent("task.escalated", "system", { to: "Escalation", signature: signature.slice(0, 12) });
-  toast("Escalated with a signed packet");
+  toast("Escalated with a signed packet", async () => {
+    state.escalated = before;
+    save();
+    $("#packet").textContent = "";
+    await appendEvent("task.escalation_withdrawn", "human", { signature: signature.slice(0, 12) });
+    toast("Escalation withdrawn");
+  });
 };
 
 /* ---- keyboard ----------------------------------------------------------- */
 document.addEventListener("keydown", event => {
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+    event.preventDefault();
+    openPalette();
+    return;
+  }
+  if (event.key === "Escape" && !$("#pal").hidden) { closePalette(); return; }
   if (event.metaKey || event.ctrlKey || event.altKey) return;
   const order = ["unified", "records", "conflicts", "ledger", "workforce", "automations", "settings"];
   const index = Number(event.key);
@@ -1739,6 +1862,7 @@ document.addEventListener("keydown", event => {
     }
     if (document.getElementById(route.view)) go(route.view);
     if (route.view === "records" && route.recordId === "import") openImport();
+    if (route.view === "command") openPalette();
   }
   syncViewBar();
   renderSavedViews();
