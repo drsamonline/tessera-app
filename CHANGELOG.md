@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.14.0] - 2026-11-14
+
+### Added
+
+- **Notes per record.** A note is a `note.added` ledger event, not a row in a second store — so it is as durable as
+  everything else, it carries an actor and a sequence number, and it appears in the chain. Retracting one appends
+  `note.retracted`; the original stays, because a ledger that deletes is not a ledger.
+- **Undo for a fired workflow**, on the same compensating-event pattern as resolve and assign.
+- **Focus management for all three overlays.** Each one remembers where focus came from, returns it on close, and
+  keeps Tab inside itself. A dialog you can tab out of strands a keyboard user behind the backdrop.
+
+### Why notes went in the ledger
+
+The alternative — a notes table beside the chain — is the shape that produces the question "which one is true?" six
+months later. One store, one answer, and the audit trail comes free.
+
 ## [1.13.0] - 2026-11-14
 
 ### Added

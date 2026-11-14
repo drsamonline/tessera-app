@@ -433,6 +433,19 @@ a{color:var(--accent)}
             <ul class="tl" id="timeline"></ul>
           </div>
         </div>
+
+        <div class="card" style="margin-top:var(--gap)">
+          <header>Notes</header>
+          <div class="body">
+            <div class="row" style="margin-bottom:10px">
+              <label class="sr" for="noteText">Add a note</label>
+              <input id="noteText" class="search" style="flex:1 1 auto;min-width:0"
+                     placeholder="What happened, and what should the next person know?">
+              <button class="btn small primary" id="noteAdd">Add note</button>
+            </div>
+            <ul class="tl" id="noteList"></ul>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -1254,6 +1267,46 @@ async function verifyChain() {
 }
 
 /* ---- rendering ---------------------------------------------------------- */
+/* Every overlay returns focus where it came from and keeps Tab inside itself.
+   A dialog you can tab out of is a dialog that strands a keyboard user behind
+   the backdrop. */
+let sheetReturnFocus = null;
+
+function focusables(root) {
+  return Array.from(root.querySelectorAll(
+    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'))
+    .filter(node => !node.disabled && node.offsetParent !== null);
+}
+
+function trapFocus(root) {
+  root.addEventListener("keydown", event => {
+    if (event.key !== "Tab") return;
+    const nodes = focusables(root);
+    if (!nodes.length) return;
+    const first = nodes[0];
+    const last = nodes[nodes.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault(); last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault(); first.focus();
+    }
+  });
+}
+
+function openSheet(id) {
+  sheetReturnFocus = document.activeElement;
+  const el = $(id);
+  el.hidden = false;
+  const nodes = focusables(el);
+  if (nodes.length) nodes[0].focus();
+}
+
+function closeSheet(id) {
+  $(id).hidden = true;
+  if (sheetReturnFocus && sheetReturnFocus.focus) sheetReturnFocus.focus();
+  sheetReturnFocus = null;
+}
+
 function toast(message, onUndo) {
   const el = $("#toast");
   el.textContent = "";
@@ -1429,6 +1482,38 @@ function renderConnectors() {
       <span>${status.label}</span>
     </span>`;
   }).join("");
+}
+
+function renderNotes() {
+  const host = $("#noteList");
+  if (!host) return;
+  const retracted = new Set((state.ledger || [])
+    .filter(event => event.action === "note.retracted")
+    .map(event => event.payload.note));
+  const notes = (state.ledger || []).filter(event =>
+    event.action === "note.added" &&
+    event.payload.record === state.selected &&
+    !retracted.has(event.payload.note));
+  host.innerHTML = notes.length
+    ? notes.slice().reverse().map(event => `
+        <li><time>#${event.seq} · ${event.actor}</time><p>${event.payload.text}</p></li>`).join("")
+    : `<li style="border-left-color:transparent;padding-left:0"><p class="note">
+         No notes on this record. A note is a ledger event, so it is as durable as everything else.</p></li>`;
+}
+
+async function addNote() {
+  const input = $("#noteText");
+  const text = (input.value || "").trim();
+  if (!text) { input.focus(); return; }
+  const noteId = "n" + Date.now().toString(36);
+  input.value = "";
+  await enqueue("note.added", "human", { record: state.selected, note: noteId, text });
+  renderNotes();
+  toast("Note added", async () => {
+    await enqueue("note.retracted", "human", { record: state.selected, note: noteId });
+    renderNotes();
+    toast("Note retracted - the original stays in the chain");
+  });
 }
 
 function renderTimeline() {
@@ -1680,7 +1765,10 @@ function renderWorkflows() {
     const flow = WORKFLOWS.find(f => f.id === btn.dataset.run);
     if (!evaluateCondition(flow.condition, RECORD)) { toast("Condition does not match this record"); return; }
     await enqueue("workflow.fired", "system", { workflow: flow.id, actions: flow.actions.length });
-    toast(`${flow.name}: ${flow.actions.length} actions ran`);
+    toast(`${flow.name}: ${flow.actions.length} actions ran`, async () => {
+      await enqueue("workflow.reverted", "human", { workflow: flow.id });
+      toast("Run reverted - the firing stays in the chain");
+    });
   });
   $$("[data-toggle]").forEach(btn => btn.onclick = () => {
     const id = btn.dataset.toggle;
@@ -1711,7 +1799,7 @@ function renderAll() {
   $("#printMeta").textContent =
     `${record.name} · ${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC · ` +
     `chain head ${head}… · ${Object.keys(record.fields).filter(isConflict).length} open conflict(s)`;
-  renderRecords(); renderConnectors();
+  renderRecords(); renderConnectors(); renderNotes();
   renderFields(); renderTimeline(); renderRules(); renderConflicts(); renderLedger(); renderSeats();
   renderRouting(); renderWorkflows();
   $("#storageNote").textContent =
@@ -1743,12 +1831,11 @@ function openHistory(field) {
   $("#histBody").innerHTML = rows + `
     <p class="note" style="margin-top:12px">Every write is in the chain. Close this and press
       <b>Verify chain</b> on the Ledger screen to recompute all of it.</p>`;
-  $("#hist").hidden = false;
-  $("#histClose").focus();
+  openSheet("#hist");
 }
 
 function closeHistory() {
-  $("#hist").hidden = true;
+  closeSheet("#hist");
 }
 $("#histClose").onclick = closeHistory;
 $("#hist").onclick = event => { if (event.target.id === "hist") closeHistory(); };
@@ -1786,13 +1873,16 @@ function palCommands() {
 
 function openPalette() {
   $("#pal").hidden = false;
+  sheetReturnFocus = document.activeElement;
   const input = $("#palInput");
   input.value = "";
   renderPalette("");
   input.focus();
 }
 
-function closePalette() { $("#pal").hidden = true; }
+function closePalette() {
+  closeSheet("#pal");
+}
 
 function renderPalette(query) {
   const needle = query.trim().toLowerCase();
@@ -1872,10 +1962,9 @@ function parseCsv(text) {
 }
 
 function openImport() {
-  $("#imp").hidden = false;
-  $("#impClose").focus();
+  openSheet("#imp");
 }
-function closeImport() { $("#imp").hidden = true; }
+function closeImport() { closeSheet("#imp"); }
 
 function previewImport() {
   const text = $("#impText").value;
@@ -1976,6 +2065,8 @@ $("#impFile").onchange = event => {
   reader.onload = () => { $("#impText").value = reader.result; previewImport(); };
   reader.readAsText(file);
 };
+
+["#hist", "#imp", "#pal"].forEach(id => trapFocus($(id)));
 
 /* ---- navigation --------------------------------------------------------- */
 function go(view, recordId) {
@@ -2100,6 +2191,9 @@ $("#exportCsv").onclick = () => {
   enqueue("record.exported", "human", { record: payload.id, format: "csv" });
   toast("Exported as CSV");
 };
+
+$("#noteAdd").onclick = addNote;
+$("#noteText").onkeydown = event => { if (event.key === "Enter") addNote(); };
 
 $("#engineConnect").onclick = connectEngine;
 $("#engineDisconnect").onclick = disconnectEngine;
