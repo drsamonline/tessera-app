@@ -39,14 +39,14 @@ a network*.
 | # | Enhancement | Why it matters | Effort |
 |---|---|---|---|
 | 1 | ~~**IndexedDB instead of localStorage**~~ — IndexedDB with a localStorage mirror for speed, shipped in 1.9.0 | localStorage is 5 MB and synchronous; IndexedDB is neither. This was the gate for everything below | done |
-| 2 | **Background sync** — queue writes in the outbox, replay on reconnect | The pattern is already written in the engine (`tessera/mobile.py`); port it | M |
+| 2 | **Background sync** — shipped as a durable outbox in 1.10.0: every write is queued in IndexedDB and replayed into the ledger, idempotent by id. **The network half does not exist**, because there is no server | The pattern is already written in the engine (`tessera/mobile.py`) | M |
 | 3 | **Conflict-free local edits** — Lamport clock + replica id, exactly as `tessera/sync.py` | Two tabs editing one record currently last-write-wins silently | M |
 | 4 | **Offline attachments** — store files in IndexedDB with a size cap and an eviction policy | Notes with a screenshot are the reason people keep a CRM open | M |
 | 5 | **Precache the whole app on install, not on first visit** | `install` already does this; verify it on a cold, offline start | S |
 | 6 | **Update prompt** — "a new version is ready, reload" instead of silent staleness | Silent staleness is how a PWA loses trust | S |
 | 7 | **Storage persistence request** — `navigator.storage.persist()`. The storage report now shows quota; the request itself is still not called | Without it the browser can evict the data and the user blames the app | S |
 | 8 | ~~**Export / import a workspace as one file**~~ — Download and Restore in Settings, with undo, shipped in 1.9.0 | The only real backup a browser app can offer | done |
-| 9 | **Read-only offline mode** — a clear banner when a write cannot be queued | Honest beats silently broken | S |
+| 9 | **Read-only offline mode** — a clear banner when a write cannot be queued. The queue chip now shows pending writes; the "cannot queue" case is still unhandled | Honest beats silently broken | S |
 | 10 | **Service worker versioning with rollback** | One bad deploy should not brick an installed app | M |
 
 ---

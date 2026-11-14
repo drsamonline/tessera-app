@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.10.0] - 2026-11-14
+
+### Added
+
+- **A durable outbox.** Every mutation now writes an intent to the outbox first and then drains it into the ledger.
+  Intents live in IndexedDB, so a tab killed mid-write replays on the next boot; ids make the replay idempotent.
+  Seventeen call sites moved from `appendEvent` to `enqueue`.
+- **Queue chip** in the bar, showing how many writes are waiting, and the count in the storage report.
+
+### What this is not
+
+There is no server, so this is not network sync. It is the half of the pattern that can be honest here: the write
+survives the process. The engine's `tessera/mobile.py` has the other half — Lamport clocks and replica merge — and
+porting it needs a backend to merge against.
+
+### Note for anyone re-running the DOM check
+
+The ledger is built with `crypto.subtle`, so a headless dump needs a budget of about ten seconds. At eight it
+sometimes catches the "Building the chain…" state.
+
 ## [1.9.1] - 2026-11-14
 
 ### Fixed

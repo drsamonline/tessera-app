@@ -378,6 +378,7 @@ a{color:var(--accent)}
     </div>
     <div class="ws">
       <label class="sr" for="ws">Workspace</label>
+      <span class="chip warn" id="queueChip" hidden title="Writes waiting to reach the ledger"></span>
       <select id="ws"><option>Acme</option><option>Northwind</option></select>
       <button class="iconbtn" id="theme" title="Switch theme" aria-label="Switch theme">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg>
@@ -886,6 +887,8 @@ const DEFAULT_STATE = {
   view: { filter: "all", sort: "name" },
   savedViews: {},
   customRecords: [],
+  outbox: [],
+  flushed: [],
   rules: {},             // field -> node, applied to every record
   resolved: {},          // "recordId|field" -> chosen node
   ledger: null,          // [{seq, action, actor, payload, hash, prev}]
@@ -969,7 +972,8 @@ async function storageReport() {
       lines.push(`Used: ${(estimate.usage / 1024).toFixed(0)} KB of ${(estimate.quota / 1048576).toFixed(0)} MB available`);
     }
   } catch { lines.push("Quota: not reported by this browser"); }
-  lines.push(`Records: ${allRecords().length} · ledger events: ${(state.ledger || []).length}`);
+  lines.push(`Records: ${allRecords().length} · ledger events: ${(state.ledger || []).length}` +
+             ` · queued: ${(state.outbox || []).length}`);
   return lines.join(" · ");
 }
 
@@ -997,6 +1001,45 @@ async function buildLedger() {
 async function ensureLedger() {
   if (!state.ledger) { state.ledger = await buildLedger(); save(); }
   return state.ledger;
+}
+
+/* Every mutation goes through a durable outbox before it reaches the chain.
+   There is no server to sync with, so "background sync" here means the honest
+   half: an intent that survives the tab being killed, replayed into the ledger
+   on the next boot. Ids make the replay idempotent. */
+function enqueue(action, actor, payload) {
+  const item = {
+    id: "q" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    action, actor, payload, at: new Date().toISOString(),
+  };
+  state.outbox = (state.outbox || []).concat(item);
+  save();
+  renderQueue();
+  return flushOutbox();
+}
+
+async function flushOutbox() {
+  const queue = state.outbox || [];
+  if (!queue.length) return;
+  await ensureLedger();
+  const done = new Set(state.flushed || []);
+  for (const item of queue) {
+    if (done.has(item.id)) continue;
+    await appendEvent(item.action, item.actor, item.payload);
+    done.add(item.id);
+  }
+  state.flushed = Array.from(done).slice(-400);
+  state.outbox = [];
+  save();
+  renderQueue();
+}
+
+function renderQueue() {
+  const chip = $("#queueChip");
+  if (!chip) return;
+  const pending = (state.outbox || []).length;
+  chip.hidden = pending === 0;
+  chip.textContent = pending ? `${pending} queued` : "";
 }
 
 async function appendEvent(action, actor, payload) {
@@ -1207,13 +1250,13 @@ async function resolveFieldTo(field, node) {
   const before = state.resolved[key];
   state.resolved[key] = node;
   save();
-  await appendEvent("conflict.resolved", "human", { field, winner: node });
+  await enqueue("conflict.resolved", "human", { field, winner: node });
   renderAll();
   toast(`Kept ${NODES[node].label} for ${field.replace(/_/g, " ")}`, async () => {
     if (before === undefined) delete state.resolved[key];
     else state.resolved[key] = before;
     save();
-    await appendEvent("conflict.reopened", "human", { field, was: node });
+    await enqueue("conflict.reopened", "human", { field, was: node });
     renderAll();
     toast("Reverted - the conflict is open again");
   });
@@ -1230,12 +1273,12 @@ async function resolveAll() {
     winners[field] = winner.node;
   }
   save();
-  await appendEvent("conflict.bulk_resolved", "human", { fields: fields.length, winners });
+  await enqueue("conflict.bulk_resolved", "human", { fields: fields.length, winners });
   renderAll();
   toast(`${fields.length} resolved by the engine's rule`, async () => {
     state.resolved = before;
     save();
-    await appendEvent("conflict.bulk_reopened", "human", { fields: fields.length });
+    await enqueue("conflict.bulk_reopened", "human", { fields: fields.length });
     renderAll();
     toast("Reverted - every conflict is open again");
   });
@@ -1312,12 +1355,12 @@ function renderConflicts() {
       const before = { ...(state.rules || {}) };
       state.rules = { ...(state.rules || {}), [field]: node };
       save();
-      await appendEvent("rule.saved", "human", { field, source: node });
+      await enqueue("rule.saved", "human", { field, source: node });
       renderAll();
       toast(`Rule saved: ${field.replace(/_/g, " ")} always from ${NODES[node].label}`, async () => {
         state.rules = before;
         save();
-        await appendEvent("rule.removed", "human", { field });
+        await enqueue("rule.removed", "human", { field });
         renderAll();
         toast("Rule removed");
       });
@@ -1437,7 +1480,7 @@ function renderWorkflows() {
   $$("[data-run]").forEach(btn => btn.onclick = async () => {
     const flow = WORKFLOWS.find(f => f.id === btn.dataset.run);
     if (!evaluateCondition(flow.condition, RECORD)) { toast("Condition does not match this record"); return; }
-    await appendEvent("workflow.fired", "system", { workflow: flow.id, actions: flow.actions.length });
+    await enqueue("workflow.fired", "system", { workflow: flow.id, actions: flow.actions.length });
     toast(`${flow.name}: ${flow.actions.length} actions ran`);
   });
   $$("[data-toggle]").forEach(btn => btn.onclick = () => {
@@ -1705,14 +1748,14 @@ async function commitImport() {
   save();
   importState.batch = batch;
   for (const record of created) {
-    await appendEvent("record.imported", "human", { record: record.id, batch });
+    await enqueue("record.imported", "human", { record: record.id, batch });
   }
   closeImport();
   renderAll();
   toast(`Imported ${created.length} customer${created.length > 1 ? "s" : ""}`, async () => {
     state.customRecords = (state.customRecords || []).filter(r => !created.some(c => c.id === r.id));
     save();
-    await appendEvent("import.rolled_back", "human", { batch, count: created.length });
+    await enqueue("import.rolled_back", "human", { batch, count: created.length });
     renderAll();
     toast("Import rolled back - the records are gone, the events remain");
   });
@@ -1819,7 +1862,7 @@ function unifiedPayload() {
 $("#exportJson").onclick = () => {
   const payload = unifiedPayload();
   download(`tessera-${payload.id}.json`, JSON.stringify(payload, null, 2), "application/json");
-  appendEvent("record.exported", "human", { record: payload.id, format: "json" });
+  enqueue("record.exported", "human", { record: payload.id, format: "json" });
   toast("Exported as JSON");
 };
 
@@ -1831,7 +1874,7 @@ $("#exportCsv").onclick = () => {
     ...fields.map(field => `"${String(payload.fields[field].value).replace(/"/g, '""')}"`),
     payload.conflicts_open.length].join(",");
   download(`tessera-${payload.id}.csv`, head + "\n" + row + "\n", "text/csv");
-  appendEvent("record.exported", "human", { record: payload.id, format: "csv" });
+  enqueue("record.exported", "human", { record: payload.id, format: "csv" });
   toast("Exported as CSV");
 };
 
@@ -1873,7 +1916,7 @@ $("#workspaceFile").onchange = event => {
 };
 
 $("#printOne").onclick = () => {
-  appendEvent("record.printed", "human", { record: state.selected });
+  enqueue("record.printed", "human", { record: state.selected });
   window.print();
 };
 
@@ -1956,11 +1999,11 @@ async function assignTo(seatName, occupant, actor) {
   const before = state.assigned;
   state.assigned = seatName;
   save(); renderRouting();
-  await appendEvent("task.assigned", actor, { seat: seatName, occupant });
+  await enqueue("task.assigned", actor, { seat: seatName, occupant });
   toast(`Assigned to ${seatName}`, async () => {
     state.assigned = before;
     save(); renderRouting();
-    await appendEvent("task.unassigned", "human", { seat: seatName });
+    await enqueue("task.unassigned", "human", { seat: seatName });
     toast("Unassigned");
   });
 }
@@ -1995,12 +2038,12 @@ $("#escalate").onclick = async () => {
   const before = state.escalated;
   state.escalated = signature;
   save();
-  await appendEvent("task.escalated", "system", { to: "Escalation", signature: signature.slice(0, 12) });
+  await enqueue("task.escalated", "system", { to: "Escalation", signature: signature.slice(0, 12) });
   toast("Escalated with a signed packet", async () => {
     state.escalated = before;
     save();
     $("#packet").textContent = "";
-    await appendEvent("task.escalation_withdrawn", "human", { signature: signature.slice(0, 12) });
+    await enqueue("task.escalation_withdrawn", "human", { signature: signature.slice(0, 12) });
     toast("Escalation withdrawn");
   });
 };
@@ -2042,6 +2085,8 @@ document.addEventListener("keydown", event => {
   applyTheme(state.theme);
   applyDensity(state.density);
   await ensureLedger();
+  await flushOutbox();
+  renderQueue();
   $("#search").value = state.query || "";
   const record = activeRecord();
   RECORD = record.fields;
