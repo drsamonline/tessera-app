@@ -98,6 +98,7 @@ writes the whole workspace to one file, and **Restore** reads it back.
 | Keyboard | **⌘K** command palette, **1–7** sections, **/** search, **T** theme, full focus rings |
 | Deep links | `#unified/c4` opens that customer; `#records` opens the list; `#command` opens the palette |
 | Print | `@media print` forces paper tokens — see [the sample output](assets/one-pager.pdf) |
+| Accessibility | [A11Y.md](A11Y.md) — eight browser checks, a measured contrast table, and what was not tested |
 | Motion | honours `prefers-reduced-motion` |
 | Network | none after first load; no analytics, no fonts, no CDN |
 

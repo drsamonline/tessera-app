@@ -14,6 +14,7 @@
 /* ---- tokens: the same values the reference core measures ------------------ */
 :root{
   --bg:#0b0d10; --surface:#14181d; --raise:#1c2229; --line:#2a3038;
+  --line-control:#6b7480;
   --text:#e8e6e1; --muted:#a3acb6; --accent:#d9a441; --accent-ink:#0b0d10;
   --teal:#5fb3ac; --danger:#ff7b72; --ok:#56d364;
   --r-sm:6px; --r:10px; --r-lg:14px;
@@ -24,6 +25,7 @@
 }
 html[data-theme="light"]{
   --bg:#f7f4ee; --surface:#fff; --raise:#fff; --line:#cfc7b8;
+  --line-control:#8a8378;
   --text:#14181d; --muted:#4f5760; --accent:#7a5512; --accent-ink:#fff;
   --teal:#1f6b66; --danger:#a4262c; --ok:#1a6e33;
 }
@@ -63,7 +65,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .brand .tile{width:24px;height:24px;flex:0 0 auto}
 .brand b{font-size:14px;letter-spacing:.12em}
 .ws{margin-left:auto;display:flex;align-items:center;gap:8px}
-.ws select{background:var(--raise);color:var(--text);border:1px solid var(--line);
+.ws select{background:var(--raise);color:var(--text);border:1px solid var(--line-control);
   border-radius:var(--r-sm); padding:7px 9px; font:inherit; font-size:13px}
 .iconbtn{width:38px;height:38px;display:grid;place-items:center;border-radius:var(--r);
   border:1px solid var(--line); color:var(--muted); background:var(--raise)}
@@ -104,12 +106,12 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 
 /* field rows */
 .fields{display:grid;grid-template-columns:1fr;gap:0}
-.search{margin-left:auto;background:var(--raise);color:var(--text);border:1px solid var(--line);
+.search{margin-left:auto;background:var(--raise);color:var(--text);border:1px solid var(--line-control);
   border-radius:999px;padding:8px 14px;font:inherit;font-size:13px;min-width:220px;max-width:46vw}
 .search:focus{outline:2px solid var(--accent);outline-offset:1px}
 #viewBar{margin-bottom:12px}
 #viewBar .seg button{min-height:36px}
-#viewBar select{background:var(--raise);color:var(--text);border:1px solid var(--line);
+#viewBar select{background:var(--raise);color:var(--text);border:1px solid var(--line-control);
   border-radius:var(--r-sm);padding:8px 10px;font:inherit;font-size:12.5px;max-width:170px}
 .rec{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;align-items:center;
   padding:12px 14px;border-top:1px solid var(--line);width:100%;text-align:left;
@@ -154,7 +156,7 @@ button.rowaction:hover{background:var(--accent);color:var(--accent-ink)}
 
 /* buttons */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;
-  padding:0 16px;border-radius:var(--r);border:1px solid var(--line);background:var(--raise);
+  padding:0 16px;border-radius:var(--r);border:1px solid var(--line-control);background:var(--raise);
   color:var(--text);font-size:13.5px;transition:transform var(--fast), border-color var(--fast)}
 .btn:hover{border-color:var(--accent)}
 .btn:active{transform:translateY(1px)}
@@ -190,7 +192,7 @@ button.rowaction:hover{background:var(--accent);color:var(--accent-ink)}
 .setting{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:14px 0;
   border-top:1px solid var(--line)}
 .setting:first-child{border-top:0}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.seg{display:inline-flex;border:1px solid var(--line-control);border-radius:var(--r);overflow:hidden}
 .seg button{min-height:40px;padding:0 14px;font-size:12.5px;color:var(--muted)}
 .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);font-weight:600}
 .note{color:var(--muted);font-size:12.5px;line-height:1.6}
@@ -218,7 +220,7 @@ a{color:var(--accent)}
 #imp .sheet{max-height:86vh}
 .mapline{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:center;
   padding:6px 0;border-bottom:1px solid var(--line)}
-.mapline select{background:var(--raise);color:var(--text);border:1px solid var(--line);
+.mapline select{background:var(--raise);color:var(--text);border:1px solid var(--line-control);
   border-radius:var(--r-sm);padding:6px 8px;font:inherit;font-size:12.5px;width:100%}
 .mapline .arrow{color:var(--muted);font-size:12px}
 .prow{display:grid;grid-template-columns:auto 1fr;gap:8px;padding:6px 0;font-size:12.5px;
@@ -668,7 +670,7 @@ a{color:var(--accent)}
         Nothing is written until you press <b>Import</b>, and an import can be undone in one press.</p>
       <input type="file" id="impFile" accept=".csv,text/csv" style="margin-bottom:10px">
       <textarea id="impText" rows="6" placeholder="name,email,company&#10;Asha Rao,asha@acme.example,Acme"
-        style="width:100%;background:var(--raise);color:var(--text);border:1px solid var(--line);
+        style="width:100%;background:var(--raise);color:var(--text);border:1px solid var(--line-control);
         border-radius:var(--r);padding:10px;font-family:var(--mono);font-size:12px"></textarea>
       <div class="row" style="margin:12px 0">
         <button class="btn small" id="impPreview">Preview</button>

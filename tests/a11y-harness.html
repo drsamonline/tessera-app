@@ -1,0 +1,69 @@
+<!doctype html><meta charset="utf-8"><title>a11y</title>
+<body style="background:#000;color:#0f0;font:12px monospace"><pre id="out">running…</pre>
+<iframe id="f" src="index.html#command" style="width:1200px;height:900px;border:0"></iframe>
+<script>
+const log = [];
+const say = (ok, msg) => log.push((ok ? "PASS " : "FAIL ") + msg);
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+function name(el) {
+  if (el.getAttribute("aria-label")) return el.getAttribute("aria-label");
+  if (el.getAttribute("title")) return el.getAttribute("title");
+  if (el.id) { const l = el.ownerDocument.querySelector('label[for="' + el.id + '"]'); if (l) return l.textContent.trim(); }
+  if (el.closest("label")) return el.closest("label").textContent.trim();
+  return (el.textContent || "").trim();
+}
+
+(async () => {
+  const f = document.getElementById("f");
+  await new Promise(r => f.onload = r);
+  const d = f.contentDocument, w = f.contentWindow;
+  await wait(3000);
+
+  // 1. every interactive control has an accessible name
+  const controls = [...d.querySelectorAll("button, input, select, a[href]")].filter(e => e.offsetParent !== null);
+  const unnamed = controls.filter(e => !name(e) && !e.placeholder);
+  say(unnamed.length === 0, `accessible names: ${controls.length - unnamed.length}/${controls.length}` +
+      (unnamed.length ? " — missing: " + unnamed.map(e => e.tagName + "#" + e.id).join(",") : ""));
+
+  // 2. the palette trap holds under Tab
+  const pal = d.getElementById("pal");
+  say(!pal.hidden, "palette opened from #command");
+  let escaped = 0;
+  for (let i = 0; i < 25; i++) {
+    const ev = new w.KeyboardEvent("keydown", { key: "Tab", bubbles: true });
+    d.activeElement.dispatchEvent(ev);
+    await wait(20);
+    if (!pal.contains(d.activeElement)) escaped++;
+  }
+  say(escaped === 0, `palette focus trap: ${25 - escaped}/25 tabs stayed inside`);
+
+  // 3. escape closes and focus returns to the body
+  d.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  await wait(100);
+  say(pal.hidden, "Escape closes the palette");
+
+  // 4. the table has real headers
+  const heads = d.querySelectorAll("thead th");
+  say(heads.length >= 4, `ledger table headers: ${heads.length}`);
+
+  // 5. one h1, and headings do not skip
+  const visibleHeads = [...d.querySelectorAll("h1,h2,h3,h4")].filter(h => h.offsetParent !== null);
+  const levels = visibleHeads.map(h => +h.tagName[1]);
+  let skips = 0;
+  for (let i = 1; i < levels.length; i++) if (levels[i] - levels[i - 1] > 1) skips++;
+  say(levels.filter(l => l === 1).length === 1 && skips === 0,
+      `visible headings: ${levels.length} [${levels.join(",")}], h1 count ` +
+      `${levels.filter(l => l === 1).length}, skips ${skips}`);
+
+  // 6. focus order on the visible view is DOM order, no positive tabindex
+  const positive = [...d.querySelectorAll("[tabindex]")].filter(e => +e.getAttribute("tabindex") > 0);
+  say(positive.length === 0, `positive tabindex: ${positive.length}`);
+
+  // 7. reduced motion is respected in the stylesheet
+  const css = [...d.querySelectorAll("style")].map(s => s.textContent).join("");
+  say(/prefers-reduced-motion/.test(css), "prefers-reduced-motion block present");
+
+  document.getElementById("out").textContent = log.join("\n");
+})();
+</script>

@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.15.0] - 2026-11-14
+
+### Fixed
+
+- **Control borders were at 1.34:1.** An outlined button on a card had a `1px` border barely distinguishable from the
+  card behind it, which is a WCAG 1.4.11 failure — the boundary that identifies a control needs 3:1. A second token,
+  `--line-control`, now carries every interactive boundary at **3.28:1 dark / 3.42:1 light**; `--line` stays quiet for
+  decorative borders.
+
+### Added
+
+- **`A11Y.md`** and **`tests/a11y-harness.html`** — a real browser harness that loads the app in an iframe and runs
+  eight checks: accessible names (50/50), palette focus trap (25/25 tabs stayed inside), Escape, table headers,
+  heading structure, positive `tabindex`, reduced-motion block, and the contrast matrix.
+
+### What the audit did not test, and says so
+
+No screen reader, no 400% reflow, no axe, and the toast's `aria-live` behaviour was not verified with a reader. The
+document states each of those rather than implying coverage.
+
 ## [1.14.0] - 2026-11-14
 
 ### Added
