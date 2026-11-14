@@ -29,6 +29,7 @@ html[data-theme="light"]{
 }
 html[data-density="compact"]{ --sp:10px; --gap:8px; }
 *{box-sizing:border-box}
+[hidden]{display:none !important}
 html,body{height:100%}
 body{
   margin:0; background:var(--bg); color:var(--text); font-family:var(--font);
@@ -149,6 +150,8 @@ button.rowaction:hover{background:var(--accent);color:var(--accent-ink)}
   color:var(--text);font-size:13.5px;transition:transform var(--fast), border-color var(--fast)}
 .btn:hover{border-color:var(--accent)}
 .btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn:disabled:hover{border-color:var(--line)}
 .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
 .btn.ghost{background:transparent}
 .btn.small{min-height:38px;padding:0 12px;font-size:12.5px}
@@ -188,7 +191,20 @@ a{color:var(--accent)}
 /* history sheet */
 #hist{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;display:grid;place-items:center;
   padding:16px;backdrop-filter:blur(2px)}
-#hist[hidden]{display:none}
+#hist[hidden],#imp[hidden]{display:none}
+#imp{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;display:grid;place-items:center;
+  padding:16px;backdrop-filter:blur(2px)}
+#imp .sheet{max-height:86vh}
+.mapline{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:center;
+  padding:6px 0;border-bottom:1px solid var(--line)}
+.mapline select{background:var(--raise);color:var(--text);border:1px solid var(--line);
+  border-radius:var(--r-sm);padding:6px 8px;font:inherit;font-size:12.5px;width:100%}
+.mapline .arrow{color:var(--muted);font-size:12px}
+.prow{display:grid;grid-template-columns:auto 1fr;gap:8px;padding:6px 0;font-size:12.5px;
+  border-bottom:1px solid var(--line)}
+.prow.bad{color:var(--danger)}
+@media (max-width:640px){#imp{place-items:end center;padding:0}
+  #imp .sheet{width:100%;border-radius:var(--r-lg) var(--r-lg) 0 0;max-height:92vh}}
 .sheet{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);
   width:min(560px,100%);max-height:min(70vh,560px);display:flex;flex-direction:column;overflow:hidden}
 .sheet-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;
@@ -358,6 +374,7 @@ a{color:var(--accent)}
         <input id="viewName" class="search" style="min-width:150px" placeholder="Name this view"
                aria-label="Name this view" autocomplete="off">
         <button class="btn small" id="saveView">Save view</button>
+        <button class="btn small" id="openImport">Import CSV</button>
       </div>
 
       <div class="card">
@@ -496,6 +513,31 @@ a{color:var(--accent)}
     <button data-go="settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/></svg><span>Settings</span></button>
   </nav>
+</div>
+<div id="imp" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="impTitle">
+    <div class="sheet-head">
+      <b id="impTitle">Import customers</b>
+      <button class="iconbtn" id="impClose" aria-label="Close import">✕</button>
+    </div>
+    <div class="sheet-body">
+      <p class="note" style="margin:0 0 10px">Paste a CSV with a header row, or choose a file.
+        Nothing is written until you press <b>Import</b>, and an import can be undone in one press.</p>
+      <input type="file" id="impFile" accept=".csv,text/csv" style="margin-bottom:10px">
+      <textarea id="impText" rows="6" placeholder="name,email,company&#10;Asha Rao,asha@acme.example,Acme"
+        style="width:100%;background:var(--raise);color:var(--text);border:1px solid var(--line);
+        border-radius:var(--r);padding:10px;font-family:var(--mono);font-size:12px"></textarea>
+      <div class="row" style="margin:12px 0">
+        <button class="btn small" id="impPreview">Preview</button>
+        <span class="note" id="impSummary"></span>
+      </div>
+      <div id="impMap"></div>
+      <div id="impResult"></div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn primary" id="impCommit" disabled>Import</button>
+      </div>
+    </div>
+  </div>
 </div>
 <div id="hist" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="histTitle">
@@ -676,8 +718,12 @@ const RECORDS = [
 
 let RECORD = RECORDS[0].fields;
 let ACTIVITY = RECORDS[0].activity;
+function allRecords() {
+  return RECORDS.concat(state.customRecords || []);
+}
+
 function activeRecord() {
-  return RECORDS.find(record => record.id === state.selected) || RECORDS[0];
+  return allRecords().find(record => record.id === state.selected) || RECORDS[0];
 }
 
 /* ---- conflict resolution, ported from conflict.py ----------------------- */
@@ -728,6 +774,7 @@ const DEFAULT_STATE = {
   query: "",
   view: { filter: "all", sort: "name" },
   savedViews: {},
+  customRecords: [],
   resolved: {},          // "recordId|field" -> chosen node
   ledger: null,          // [{seq, action, actor, payload, hash, prev}]
   theme: "dark",
@@ -846,7 +893,8 @@ function conflictsIn(record) {
 function renderRecords() {
   const query = (state.query || "").trim().toLowerCase();
   const { filter, sort } = state.view || { filter: "all", sort: "name" };
-  const matches = RECORDS.filter(record => {
+  const pool = allRecords();
+  const matches = pool.filter(record => {
     if (query) {
       const haystack = [record.name, record.company, record.role,
         ...Object.values(record.fields.email || {}),
@@ -864,8 +912,8 @@ function renderRecords() {
   });
 
   $("#recordCount").textContent = (query || filter !== "all")
-    ? `${matches.length} of ${RECORDS.length}`
-    : `${RECORDS.length} customers`;
+    ? `${matches.length} of ${pool.length}`
+    : `${pool.length} customers`;
 
   const host = $("#recordList");
   if (!matches.length) {
@@ -1021,12 +1069,15 @@ function renderConflicts() {
         <b>${field.replace(/_/g, " ")}</b>
         <span class="chip">rule: ${resolution.rule}</span>
       </div>
-      ${entries.map(([node, value]) => `
-        <div class="row" style="margin:6px 0">
+      ${entries.map(([node, value]) => {
+        const isCurrent = canonicalJSON(value) === canonicalJSON(currentValue(field).value);
+        return `<div class="row" style="margin:6px 0">
           <span class="val">${formatValue(field, value)}</span>
+          <span class="chip ${isCurrent ? "ok" : "warn"}">${isCurrent ? "current" : "changes"}</span>
           <span class="mono">${NODES[node].label} · trust ${NODES[node].trust.toFixed(2)}</span>
-          <button class="btn small" data-pick="${field}|${node}">Keep this</button>
-        </div>`).join("")}
+          <button class="btn small" data-pick="${field}|${node}">${isCurrent ? "Keep" : "Change to this"}</button>
+        </div>`;
+      }).join("")}
       <div class="note">The engine would take <b>${NODES[resolution.node].label}</b> by ${resolution.rule}.</div>
     </div>`;
   }).join("");
@@ -1205,8 +1256,156 @@ function closeHistory() {
 $("#histClose").onclick = closeHistory;
 $("#hist").onclick = event => { if (event.target.id === "hist") closeHistory(); };
 document.addEventListener("keydown", event => {
-  if (event.key === "Escape" && !$("#hist").hidden) closeHistory();
+  if (event.key === "Escape") {
+    if (!$("#hist").hidden) closeHistory();
+    if (!$("#imp").hidden) closeImport();
+  }
 });
+
+/* ---- CSV import --------------------------------------------------------- */
+const IMPORT_FIELDS = ["full_name", "email", "phone", "company", "stage",
+                       "amount_minor", "owner", "consent"];
+const IMPORT_ALIASES = {
+  "name": "full_name", "full name": "full_name", "fullname": "full_name",
+  "contact": "full_name", "customer": "full_name",
+  "email": "email", "e mail": "email", "email address": "email",
+  "phone": "phone", "phone number": "phone", "mobile": "phone", "telephone": "phone",
+  "company": "company", "company name": "company", "account": "company", "organisation": "company",
+  "stage": "stage", "deal stage": "stage", "status": "stage",
+  "amount": "amount_minor", "deal amount": "amount_minor", "value": "amount_minor",
+  "owner": "owner", "record owner": "owner",
+  "consent": "consent", "consent state": "consent",
+};
+let importState = { headers: [], rows: [], mapping: {}, valid: [], rejected: [], batch: null };
+
+function normHeader(text) {
+  return text.trim().toLowerCase().replace(/[-_/.]/g, " ").replace(/\s+/g, " ");
+}
+
+function parseCsv(text) {
+  const lines = text.replace(/\r/g, "").split("\n").filter(line => line.trim() !== "");
+  if (!lines.length) return { headers: [], rows: [] };
+  const split = line => {
+    const out = []; let cell = ""; let quoted = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') { if (quoted && line[i + 1] === '"') { cell += '"'; i++; } else quoted = !quoted; }
+      else if (ch === "," && !quoted) { out.push(cell); cell = ""; }
+      else cell += ch;
+    }
+    out.push(cell);
+    return out.map(c => c.trim());
+  };
+  const headers = split(lines[0]);
+  const rows = lines.slice(1).map(split);
+  return { headers, rows };
+}
+
+function openImport() {
+  $("#imp").hidden = false;
+  $("#impClose").focus();
+}
+function closeImport() { $("#imp").hidden = true; }
+
+function previewImport() {
+  const text = $("#impText").value;
+  const { headers, rows } = parseCsv(text);
+  if (!headers.length) { $("#impSummary").textContent = "Paste a CSV first."; return; }
+
+  const mapping = {};
+  for (const header of headers) {
+    const guess = IMPORT_ALIASES[normHeader(header)];
+    if (guess) mapping[header] = guess;
+  }
+  importState = { headers, rows, mapping, valid: [], rejected: [], batch: null };
+
+  $("#impMap").innerHTML = headers.map(header => `
+    <div class="mapline">
+      <span class="mono">${header}</span>
+      <span class="arrow">→</span>
+      <select data-map="${header}">
+        <option value="">(ignore)</option>
+        ${IMPORT_FIELDS.map(field =>
+          `<option value="${field}" ${mapping[header] === field ? "selected" : ""}>${field}</option>`).join("")}
+      </select>
+    </div>`).join("");
+
+  $$("[data-map]").forEach(select => select.onchange = () => {
+    importState.mapping[select.dataset.map] = select.value;
+    scoreImport();
+  });
+  scoreImport();
+}
+
+function scoreImport() {
+  const { headers, rows, mapping } = importState;
+  const valid = [], rejected = [];
+  rows.forEach((row, index) => {
+    const record = {};
+    headers.forEach((header, column) => {
+      const field = mapping[header];
+      const value = row[column];
+      if (!field || value === undefined || value === "") return;
+      record[field] = field === "amount_minor" ? Number(value.replace(/[^0-9.]/g, "")) : value;
+    });
+    if (!record.full_name && !record.email) {
+      rejected.push({ line: index + 2, why: "no name and no email" });
+    } else {
+      valid.push(record);
+    }
+  });
+  importState.valid = valid;
+  importState.rejected = rejected;
+
+  $("#impSummary").textContent =
+    `${valid.length} ready · ${rejected.length} rejected · ${rows.length} rows`;
+  $("#impCommit").disabled = valid.length === 0;
+  $("#impResult").innerHTML =
+    valid.slice(0, 4).map((record, index) =>
+      `<div class="prow"><span class="mono">+${index + 1}</span><span>${record.full_name || ""} ${record.email ? "· " + record.email : ""}</span></div>`).join("") +
+    rejected.slice(0, 4).map(item =>
+      `<div class="prow bad"><span class="mono">line ${item.line}</span><span>${item.why}</span></div>`).join("");
+}
+
+async function commitImport() {
+  const { valid } = importState;
+  if (!valid.length) return;
+  const batch = "imp-" + Date.now().toString(36);
+  const created = valid.map((record, index) => {
+    const id = `c${Date.now().toString(36)}${index}`;
+    const fields = {};
+    for (const [field, value] of Object.entries(record)) fields[field] = { native: value };
+    return { id, name: record.full_name || record.email, role: "Imported",
+             company: record.company || "—", health: 50, fields, activity: [] };
+  });
+  state.customRecords = (state.customRecords || []).concat(created);
+  save();
+  importState.batch = batch;
+  for (const record of created) {
+    await appendEvent("record.imported", "human", { record: record.id, batch });
+  }
+  closeImport();
+  renderAll();
+  toast(`Imported ${created.length} customer${created.length > 1 ? "s" : ""}`, async () => {
+    state.customRecords = (state.customRecords || []).filter(r => !created.some(c => c.id === r.id));
+    save();
+    await appendEvent("import.rolled_back", "human", { batch, count: created.length });
+    renderAll();
+    toast("Import rolled back - the records are gone, the events remain");
+  });
+}
+
+$("#impClose").onclick = closeImport;
+$("#imp").onclick = event => { if (event.target.id === "imp") closeImport(); };
+$("#impPreview").onclick = previewImport;
+$("#impCommit").onclick = commitImport;
+$("#impFile").onchange = event => {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => { $("#impText").value = reader.result; previewImport(); };
+  reader.readAsText(file);
+};
 
 /* ---- navigation --------------------------------------------------------- */
 function go(view, recordId) {
@@ -1234,6 +1433,7 @@ $$("[data-sort]").forEach(button => button.onclick = () => {
   state.view.sort = button.dataset.sort;
   save(); renderRecords(); syncViewBar();
 });
+$("#openImport").onclick = openImport;
 $("#saveView").onclick = () => {
   const name = ($("#viewName").value || "").trim();
   if (!name) { toast("Name the view first"); $("#viewName").focus(); return; }
@@ -1446,7 +1646,7 @@ document.addEventListener("keydown", event => {
   renderAll();
   const route = routeFromHash();
   if (route) {
-    if (route.recordId && RECORDS.some(r => r.id === route.recordId)) {
+    if (route.recordId && allRecords().some(r => r.id === route.recordId)) {
       state.selected = route.recordId;
       const record = activeRecord();
       RECORD = record.fields;
@@ -1455,6 +1655,7 @@ document.addEventListener("keydown", event => {
       renderAll();
     }
     if (document.getElementById(route.view)) go(route.view);
+    if (route.view === "records" && route.recordId === "import") openImport();
   }
   syncViewBar();
   renderSavedViews();

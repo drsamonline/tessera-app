@@ -15,9 +15,9 @@ Ordered by what a person would notice first.
 | 2 | ~~**Multi-record list with saved views**~~ — list in 1.2.0, filter/sort/save in 1.4.0 | Turns the console from a showcase into something you would open on a Monday | done |
 | 3 | ~~**Bulk resolve**~~ — apply one rule to every conflict of the same kind | **Shipped in 1.3.0.** One button, engine's rule, undoable | done |
 | 4 | ~~**Field history popover**~~ — click any value, see every write with actor and time | **Shipped in 1.1.0.** The ledger is the differentiator; hiding it behind a tab wasted it | done |
-| 5 | **Conflict preview before merge** — a diff of what changes if you accept a rule | Turns a guess into a decision | S |
+| 5 | ~~**Conflict preview before merge**~~ — each candidate is marked **current** or **changes**, shipped in 1.5.0 | Turns a guess into a decision | done |
 | 6 | **Connector status strip** — per system: last sync, error count, staleness | The one screen an operator actually needs at 9am | S |
-| 7 | **CSV import with dry run** — map, preview, commit, roll back | The single most requested feature of every CRM migration | M |
+| 7 | ~~**CSV import with dry run**~~ — paste or choose a file, auto-mapped columns, ready/rejected counts, one-press rollback, shipped in 1.5.0 | The single most requested feature of every CRM migration | done |
 | 8 | **Saved resolver rules** — "always take NetSuite for amounts" as a stored policy | Repeated decisions should become policy, not habit | M |
 | 9 | ~~**Export the unified record**~~ — JSON and CSV shipped in 1.4.0. **Printable one-pager** still open | People need to send the record to somebody who is not in the app | S |
 | 10 | **Keyboard-first command palette** — `⌘K` with actions, not just navigation | The power users are the ones who will keep it open | S |

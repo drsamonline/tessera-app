@@ -38,9 +38,9 @@ shows **where every value came from**, and records the whole thing in a hash cha
 
 | Screen | What it does |
 |---|---|
-| **Records** | Ten customers, one row each, with the systems that disagree counted. `/` searches, filter by conflicts, sort by health, and save the view you use every morning. |
+| **Records** | Ten customers, one row each. `/` searches, filter by conflicts, sort by health, save the view you use every morning, and **import a CSV** with a dry run and a one-press rollback. |
 | **Unified** | One record. Every field names the system it came from and the rule that chose it. Click any value for its write history; export the record as JSON or CSV; copy a link that opens it. |
-| **Resolve** | Both values, both trust scores, and the rule the engine would apply. Choose one, or **resolve all** with the engine's rule. Every choice is logged and every choice can be undone. |
+| **Resolve** | Both values, both trust scores, the rule the engine would apply, and whether each candidate is the **current** value or a **change**. Choose one, or resolve all. Every choice is logged and undoable. |
 | **Ledger** | Every event, SHA-256 chained. **Verify chain** recomputes it locally. **Tamper** proves the verification works. An undo is a new event, never a deleted one. |
 | **Workforce** | Work goes to a position, not a person. The router shows its term-by-term arithmetic. Escalation produces a signed handoff packet. |
 | **Automate** | A workflow written by an agent is a proposal. The run button is disabled until a person approves it. |

@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.5.0] - 2026-11-14
+
+### Added
+
+- **Conflict preview.** Every candidate on the Resolve screen is marked **current** or **changes**, so the button
+  that would do nothing says so. The rule and both trust scores were already there; this is the part that turns a
+  guess into a decision.
+- **CSV import with a dry run.** Paste a CSV or choose a file; columns are auto-mapped from a header alias table and
+  can be corrected; the preview counts ready and rejected rows and shows the first few of each; nothing is written
+  until **Import**, and the toast offers a one-press rollback that removes the records and keeps the events.
+- `#records/import` opens the sheet directly.
+
+### Fixed
+
+- `[hidden]` was losing to `.btn { display: inline-flex }`, so a button marked hidden rendered anyway. Caught by
+  screenshotting the sheet. One `[hidden] { display: none !important }` fixes the whole class of it.
+- Disabled buttons had no disabled appearance.
+
 ## [1.4.0] - 2026-11-14
 
 ### Added
