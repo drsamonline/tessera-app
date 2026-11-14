@@ -95,6 +95,23 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 
 /* field rows */
 .fields{display:grid;grid-template-columns:1fr;gap:0}
+.search{margin-left:auto;background:var(--raise);color:var(--text);border:1px solid var(--line);
+  border-radius:999px;padding:8px 14px;font:inherit;font-size:13px;min-width:220px;max-width:46vw}
+.search:focus{outline:2px solid var(--accent);outline-offset:1px}
+.rec{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;align-items:center;
+  padding:12px 14px;border-top:1px solid var(--line);width:100%;text-align:left;
+  min-height:64px;background:none;transition:background var(--fast)}
+.rec:first-child{border-top:0}
+.rec:hover{background:var(--raise)}
+.rec[aria-current="true"]{background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.rec .av{width:36px;height:36px;border-radius:10px;background:var(--raise);color:var(--text);
+  display:grid;place-items:center;font-size:12.5px;font-weight:650;border:1px solid var(--line)}
+.rec .nm{display:block;font-size:14.5px;font-weight:600;letter-spacing:-.01em}
+.rec .meta{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.rec .right{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.empty{padding:24px 14px;color:var(--muted);font-size:13.5px;text-align:center}
+kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-bottom-width:2px;
+  border-radius:5px;padding:1px 5px;background:var(--raise)}
 .frow{display:grid;grid-template-columns:132px minmax(0,1fr) auto auto;gap:10px 14px;
   align-items:center;padding:12px 14px;border-top:1px solid var(--line);min-height:54px;
   transition:background var(--fast)}
@@ -213,6 +230,10 @@ a{color:var(--accent)}
   .record{padding:14px}
   .record .who b{font-size:15.5px}
   .ledger th:nth-child(3),.ledger td:nth-child(3){display:none}
+  .card > header{flex-wrap:wrap}
+  .search{margin-left:0;width:100%;max-width:none;order:3}
+  .rec{grid-template-columns:36px minmax(0,1fr);gap:10px;padding:12px}
+  .rec .right{grid-column:1/-1;justify-content:flex-start;margin-top:2px}
 }
 @media (max-width:420px){
   .pill{width:100%;margin-left:0}
@@ -230,6 +251,9 @@ a{color:var(--accent)}
     <button data-go="unified" aria-current="true" title="Unified view">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
       <span>Unified</span></button>
+    <button data-go="records" title="Records">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+      <span>Records</span></button>
     <button data-go="conflicts" title="Conflicts">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.01"/></svg>
       <span>Resolve</span></button>
@@ -270,19 +294,20 @@ a{color:var(--accent)}
 
     <!-- UNIFIED ---------------------------------------------------------- -->
     <section class="view" id="unified" data-active>
-      <h1>Asha Rao</h1>
-      <p class="sub">One customer, four systems, one record. Every field says where it came from.</p>
+      <h1 id="recordName">Asha Rao</h1>
+      <p class="sub">One customer, four systems, one record. Every field says where it came from.
+        <button class="rowaction" id="backToList" style="margin-left:8px">All records</button></p>
 
       <div class="grid2">
         <div class="card">
           <div class="record">
-            <div class="avatar" aria-hidden="true">AR</div>
+            <div class="avatar" id="recordAvatar" aria-hidden="true">AR</div>
             <div class="who">
-              <b>Asha Rao</b>
-              <span>Director of Operations · Acme Industrial</span>
+              <b id="recordTitle">Asha Rao</b>
+              <span id="recordSubtitle">Director of Operations · Acme Industrial</span>
             </div>
             <div class="pill">
-              <span class="chip ok">Relationship health 82</span>
+              <span class="chip ok" id="healthChip">Relationship health 82</span>
               <span class="chip warn" id="conflictCount">2 conflicts</span>
             </div>
           </div>
@@ -294,6 +319,23 @@ a{color:var(--accent)}
           <div class="body">
             <ul class="tl" id="timeline"></ul>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RECORDS ---------------------------------------------------------- -->
+    <section class="view" id="records">
+      <h1>Records</h1>
+      <p class="sub">Every customer, one row each, with the systems that disagree counted. Press <kbd>/</kbd> to search.</p>
+      <div class="card">
+        <header>
+          <span>Customers</span>
+          <span class="chip" id="recordCount"></span>
+          <input id="search" class="search" type="search" placeholder="Search name, company, email…"
+                 aria-label="Search records" autocomplete="off">
+        </header>
+        <div class="body" style="padding:0">
+          <div id="recordList"></div>
         </div>
       </div>
     </section>
@@ -404,6 +446,8 @@ a{color:var(--accent)}
   <nav class="tabs" aria-label="Sections">
     <button data-go="unified" aria-current="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg><span>Unified</span></button>
+    <button data-go="records">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg><span>Records</span></button>
     <button data-go="conflicts">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.01"/></svg><span>Resolve</span></button>
     <button data-go="ledger">
@@ -455,24 +499,149 @@ const NODES = {
   native:  { id: "native", label: "Tessera", kind: "native", trust: 0.90, authority: {} },
 };
 
-const RECORD = {
-  "full_name":   { hubspot: "Asha Rao", zendesk: "Asha R Rao", netsuite: "Asha Rao" },
-  "email":       { hubspot: "asha@acme.example", zendesk: "asha.rao@acme.example" },
-  "phone":       { hubspot: "+91 90000 00001", netsuite: "+91 90000 00001" },
-  "company":     { hubspot: "Acme Industrial", netsuite: "Acme Industrial Pvt Ltd" },
-  "stage":       { hubspot: "proposal", native: "proposal" },
-  "amount_minor":{ netsuite: 4500000, hubspot: 4500000 },
-  "owner":       { native: "Priya Nair" },
-  "consent":     { hubspot: "granted", zendesk: "granted" },
-};
-
-const ACTIVITY = [
-  { at: "09:12", node: "hubspot", text: "Deal moved to proposal by Priya Nair" },
-  { at: "09:40", node: "zendesk", text: "Ticket #4821 opened: delivery address change" },
-  { at: "10:05", node: "native",  text: "Task assigned to position Support triage" },
-  { at: "10:22", node: "netsuite", text: "Invoice INV-2291 issued for ₹45,000" },
-  { at: "11:02", node: "zendesk", text: "Ticket #4821 resolved by agent" },
+const RECORDS = [
+  { id: "c1", name: "Asha Rao", role: "Director of Operations", company: "Acme Industrial", health: 82,
+    fields: {
+      full_name:    { hubspot: "Asha Rao", zendesk: "Asha R Rao", netsuite: "Asha Rao" },
+      email:        { hubspot: "asha@acme.example", zendesk: "asha.rao@acme.example" },
+      phone:        { hubspot: "+91 90000 00001", netsuite: "+91 90000 00001" },
+      company:      { hubspot: "Acme Industrial", netsuite: "Acme Industrial Pvt Ltd" },
+      stage:        { hubspot: "proposal", native: "proposal" },
+      amount_minor: { netsuite: 4500000, hubspot: 4500000 },
+      owner:        { native: "Priya Nair" },
+      consent:      { hubspot: "granted", zendesk: "granted" },
+    },
+    activity: [
+      { at: "09:12", node: "hubspot", text: "Deal moved to proposal by Priya Nair" },
+      { at: "09:40", node: "zendesk", text: "Ticket #4821 opened: delivery address change" },
+      { at: "10:05", node: "native",  text: "Task assigned to position Support triage" },
+      { at: "10:22", node: "netsuite", text: "Invoice INV-2291 issued for ₹45,000" },
+      { at: "11:02", node: "zendesk", text: "Ticket #4821 resolved by agent" },
+    ] },
+  { id: "c2", name: "Ravi Kumar", role: "Head of Procurement", company: "Globex", health: 64,
+    fields: {
+      full_name:    { hubspot: "Ravi Kumar", netsuite: "Ravi Kumar" },
+      email:        { hubspot: "ravi@globex.example", zendesk: "r.kumar@globex.example" },
+      phone:        { hubspot: "+91 90000 00002" },
+      company:      { hubspot: "Globex", netsuite: "Globex Ltd" },
+      stage:        { hubspot: "negotiation" },
+      amount_minor: { netsuite: 12000000 },
+      owner:        { native: "Sam Iyer" },
+      consent:      { hubspot: "granted" },
+    },
+    activity: [
+      { at: "08:31", node: "hubspot", text: "Deal moved to negotiation" },
+      { at: "09:15", node: "netsuite", text: "Credit note CN-118 applied" },
+    ] },
+  { id: "c3", name: "Meera Iyer", role: "Finance Lead", company: "Initech", health: 91,
+    fields: {
+      full_name:    { hubspot: "Meera Iyer", netsuite: "Meera Iyer" },
+      email:        { hubspot: "meera@initech.example", zendesk: "meera@initech.example" },
+      phone:        { hubspot: "+91 90000 00003", netsuite: "+91 90000 00003" },
+      company:      { hubspot: "Initech", netsuite: "Initech" },
+      stage:        { hubspot: "won", native: "won" },
+      amount_minor: { netsuite: 8900000, hubspot: 8900000 },
+      owner:        { native: "Priya Nair" },
+      consent:      { hubspot: "granted", zendesk: "granted" },
+    },
+    activity: [
+      { at: "10:02", node: "hubspot", text: "Deal closed won" },
+      { at: "10:04", node: "netsuite", text: "Invoice INV-2302 raised" },
+    ] },
+  { id: "c4", name: "Daniel Okafor", role: "Plant Manager", company: "Umbrella", health: 47,
+    fields: {
+      full_name:    { hubspot: "Daniel Okafor", zendesk: "Dan Okafor" },
+      email:        { hubspot: "daniel@umbrella.example" },
+      phone:        { hubspot: "+234 800 000 0004" },
+      company:      { hubspot: "Umbrella" },
+      stage:        { hubspot: "scoping" },
+      amount_minor: { netsuite: 2100000 },
+      owner:        { native: "Sam Iyer" },
+      consent:      { hubspot: "pending", zendesk: "granted" },
+    },
+    activity: [
+      { at: "07:48", node: "zendesk", text: "Ticket #4790 reopened by customer" },
+      { at: "08:10", node: "hubspot", text: "Discovery call logged" },
+    ] },
+  { id: "c5", name: "Sofia Marin", role: "Operations Director", company: "Vandelay", health: 73,
+    fields: {
+      full_name:    { hubspot: "Sofia Marin", netsuite: "Sofia Marin" },
+      email:        { hubspot: "sofia@vandelay.example", netsuite: "s.marin@vandelay.example" },
+      phone:        { hubspot: "+34 600 000 005" },
+      company:      { hubspot: "Vandelay", netsuite: "Vandelay Imports" },
+      stage:        { hubspot: "proposal" },
+      amount_minor: { netsuite: 5600000 },
+      owner:        { native: "Priya Nair" },
+      consent:      { hubspot: "granted" },
+    },
+    activity: [{ at: "11:20", node: "hubspot", text: "Proposal sent" }] },
+  { id: "c6", name: "Karan Shah", role: "IT Manager", company: "Hooli", health: 58,
+    fields: {
+      full_name:    { hubspot: "Karan Shah", zendesk: "Karan Shah" },
+      email:        { hubspot: "karan@hooli.example" },
+      phone:        { hubspot: "+91 90000 00006", netsuite: "+91 90000 00066" },
+      company:      { hubspot: "Hooli" },
+      stage:        { hubspot: "negotiation", native: "negotiation" },
+      amount_minor: { netsuite: 3300000 },
+      owner:        { native: "Sam Iyer" },
+      consent:      { hubspot: "granted", zendesk: "granted" },
+    },
+    activity: [{ at: "09:55", node: "zendesk", text: "Ticket #4802 escalated" }] },
+  { id: "c7", name: "Elena Petrova", role: "CFO", company: "Stark Industries", health: 88,
+    fields: {
+      full_name:    { hubspot: "Elena Petrova", netsuite: "Elena Petrova" },
+      email:        { hubspot: "elena@stark.example" },
+      phone:        { hubspot: "+44 20 0000 0007" },
+      company:      { hubspot: "Stark Industries", netsuite: "Stark Industries" },
+      stage:        { hubspot: "won" },
+      amount_minor: { netsuite: 22000000 },
+      owner:        { native: "Priya Nair" },
+      consent:      { hubspot: "granted" },
+    },
+    activity: [{ at: "12:05", node: "netsuite", text: "Payment received in full" }] },
+  { id: "c8", name: "Tomás Silva", role: "Logistics Lead", company: "Wayne Shipping", health: 39,
+    fields: {
+      full_name:    { hubspot: "Tomás Silva", zendesk: "Tomas Silva" },
+      email:        { hubspot: "tomas@wayne.example", zendesk: "t.silva@wayne.example" },
+      phone:        { hubspot: "+55 11 90000 0008" },
+      company:      { hubspot: "Wayne Shipping" },
+      stage:        { hubspot: "scoping" },
+      amount_minor: { netsuite: 900000 },
+      owner:        { native: "Sam Iyer" },
+      consent:      { zendesk: "withdrawn" },
+    },
+    activity: [{ at: "13:40", node: "zendesk", text: "Consent withdrawn for marketing" }] },
+  { id: "c9", name: "Nadia Haddad", role: "Buyer", company: "Soylent", health: 76,
+    fields: {
+      full_name:    { hubspot: "Nadia Haddad", netsuite: "Nadia Haddad" },
+      email:        { hubspot: "nadia@soylent.example" },
+      phone:        { hubspot: "+971 50 000 0009" },
+      company:      { hubspot: "Soylent" },
+      stage:        { hubspot: "proposal" },
+      amount_minor: { netsuite: 1750000 },
+      owner:        { native: "Priya Nair" },
+      consent:      { hubspot: "granted", zendesk: "granted" },
+    },
+    activity: [{ at: "14:12", node: "hubspot", text: "Pricing sheet shared" }] },
+  { id: "c10", name: "Ben Whitfield", role: "Founder", company: "Tyrell", health: 52,
+    fields: {
+      full_name:    { hubspot: "Ben Whitfield", zendesk: "Benjamin Whitfield" },
+      email:        { hubspot: "ben@tyrell.example" },
+      phone:        { hubspot: "+1 415 000 0010" },
+      company:      { hubspot: "Tyrell", netsuite: "Tyrell Corp" },
+      stage:        { hubspot: "negotiation" },
+      amount_minor: { netsuite: 7400000 },
+      owner:        { native: "Sam Iyer" },
+      consent:      { hubspot: "granted" },
+    },
+    activity: [{ at: "15:30", node: "hubspot", text: "Contract redlines received" }] },
 ];
+
+let RECORD = RECORDS[0].fields;
+let ACTIVITY = RECORDS[0].activity;
+function activeRecord() {
+  return RECORDS.find(record => record.id === state.selected) || RECORDS[0];
+}
 
 /* ---- conflict resolution, ported from conflict.py ----------------------- */
 const AUTHORITY_RANK = { authority: 3, delegate: 2, bidirectional: 1, mirror: 0 };
@@ -518,7 +687,9 @@ function routeScore(terms) {
 
 /* ---- state -------------------------------------------------------------- */
 const DEFAULT_STATE = {
-  resolved: {},          // field -> chosen node
+  selected: "c1",
+  query: "",
+  resolved: {},          // "recordId|field" -> chosen node
   ledger: null,          // [{seq, action, actor, payload, hash, prev}]
   theme: "dark",
   density: "comfortable",
@@ -601,7 +772,7 @@ function currentValue(field) {
   const candidates = RECORD[field];
   const resolution = resolveField(field, candidates, Object.fromEntries(
     Object.entries(candidates).map(([node]) => [node, NODES[node].authority[field] || "bidirectional"])));
-  const chosen = state.resolved[field];
+  const chosen = state.resolved[state.selected + "|" + field];
   if (chosen && candidates[chosen] !== undefined) {
     return { value: candidates[chosen], node: chosen, rule: "chosen by you" };
   }
@@ -610,12 +781,79 @@ function currentValue(field) {
 
 function isConflict(field) {
   const values = new Set(Object.values(RECORD[field]).map(v => canonicalJSON(v)));
-  return values.size > 1 && !state.resolved[field];
+  return values.size > 1 && !state.resolved[state.selected + "|" + field];
 }
 
 function formatValue(field, value) {
   if (field === "amount_minor") return "₹" + (value / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 });
   return String(value);
+}
+
+function conflictsIn(record) {
+  return Object.entries(record.fields).filter(([field, candidates]) => {
+    const distinct = new Set(Object.values(candidates).map(v => canonicalJSON(v)));
+    return distinct.size > 1 && !state.resolved[record.id + "|" + field];
+  }).length;
+}
+
+function renderRecords() {
+  const query = (state.query || "").trim().toLowerCase();
+  const matches = RECORDS.filter(record => {
+    if (!query) return true;
+    const haystack = [record.name, record.company, record.role,
+      ...Object.values(record.fields.email || {}),
+      ...Object.values(record.fields.company || {})].join(" ").toLowerCase();
+    return haystack.includes(query);
+  });
+
+  $("#recordCount").textContent = query
+    ? `${matches.length} of ${RECORDS.length}`
+    : `${RECORDS.length} customers`;
+
+  const host = $("#recordList");
+  if (!matches.length) {
+    host.innerHTML = `<p class="empty">No record matches “${query}”.</p>`;
+    return;
+  }
+  host.innerHTML = matches.map(record => {
+    const conflicts = conflictsIn(record);
+    const initials = record.name.split(" ").map(part => part[0]).join("").slice(0, 2);
+    const email = currentValueFor(record, "email");
+    return `<button class="rec" data-open="${record.id}" ${record.id === state.selected ? 'aria-current="true"' : ""}>
+      <span class="av" aria-hidden="true">${initials}</span>
+      <span>
+        <span class="nm">${record.name}</span>
+        <span class="meta">${record.role} · ${record.company}<br>${email}</span>
+      </span>
+      <span class="right">
+        ${conflicts ? `<span class="chip warn">${conflicts} conflict${conflicts > 1 ? "s" : ""}</span>`
+                    : `<span class="chip ok">agrees</span>`}
+        <span class="chip">${record.health}</span>
+      </span>
+    </button>`;
+  }).join("");
+
+  $$("[data-open]", host).forEach(button => button.onclick = () => openRecord(button.dataset.open));
+}
+
+function currentValueFor(record, field) {
+  const candidates = record.fields[field] || {};
+  const chosen = state.resolved[record.id + "|" + field];
+  if (chosen && candidates[chosen] !== undefined) return candidates[chosen];
+  const resolution = resolveField(field, candidates, Object.fromEntries(
+    Object.entries(candidates).map(([node]) => [node, NODES[node].authority[field] || "bidirectional"])));
+  return resolution.value;
+}
+
+function openRecord(id) {
+  state.selected = id;
+  const record = activeRecord();
+  RECORD = record.fields;
+  ACTIVITY = record.activity;
+  save();
+  go("unified");
+  renderAll();
+  toast(`${record.name} loaded`);
 }
 
 function renderFields() {
@@ -683,7 +921,7 @@ function renderConflicts() {
   $$("[data-pick]", host).forEach(btn => {
     btn.onclick = async () => {
       const [field, node] = btn.dataset.pick.split("|");
-      state.resolved[field] = node;
+      state.resolved[state.selected + "|" + field] = node;
       save();
       await appendEvent("conflict.resolved", "human", { field, winner: node });
       renderAll();
@@ -812,6 +1050,13 @@ function renderWorkflows() {
 }
 
 function renderAll() {
+  const record = activeRecord();
+  $("#recordName").textContent = record.name;
+  $("#recordTitle").textContent = record.name;
+  $("#recordSubtitle").textContent = `${record.role} · ${record.company}`;
+  $("#recordAvatar").textContent = record.name.split(" ").map(p => p[0]).join("").slice(0, 2);
+  $("#healthChip").textContent = `Relationship health ${record.health}`;
+  renderRecords();
   renderFields(); renderTimeline(); renderConflicts(); renderLedger(); renderSeats();
   renderRouting(); renderWorkflows();
   $("#storageNote").textContent =
@@ -864,6 +1109,18 @@ function go(view) {
 }
 
 $$("[data-go]").forEach(button => button.onclick = () => go(button.dataset.go));
+$("#backToList").onclick = () => go("records");
+$("#search").oninput = event => {
+  state.query = event.target.value;
+  save();
+  renderRecords();
+};
+$("#search").onkeydown = event => {
+  if (event.key === "Enter") {
+    const first = $("#recordList [data-open]");
+    if (first) first.click();
+  }
+};
 
 /* ---- settings ----------------------------------------------------------- */
 function applyTheme(theme) {
@@ -950,10 +1207,17 @@ $("#escalate").onclick = async () => {
 /* ---- keyboard ----------------------------------------------------------- */
 document.addEventListener("keydown", event => {
   if (event.metaKey || event.ctrlKey || event.altKey) return;
-  const order = ["unified", "conflicts", "ledger", "workforce", "automations", "settings"];
+  const order = ["unified", "records", "conflicts", "ledger", "workforce", "automations", "settings"];
   const index = Number(event.key);
   if (index >= 1 && index <= order.length) { go(order[index - 1]); event.preventDefault(); }
   if (event.key === "t") { $("#theme").click(); }
+  if (event.key === "/") {
+    event.preventDefault();
+    go("records");
+    const search = $("#search");
+    search.focus();
+    search.select();
+  }
 });
 
 /* ---- boot --------------------------------------------------------------- */
@@ -961,6 +1225,10 @@ document.addEventListener("keydown", event => {
   applyTheme(state.theme);
   applyDensity(state.density);
   await ensureLedger();
+  $("#search").value = state.query || "";
+  const record = activeRecord();
+  RECORD = record.fields;
+  ACTIVITY = record.activity;
   renderAll();
   const hash = location.hash.replace("#", "");
   if (hash) go(hash);

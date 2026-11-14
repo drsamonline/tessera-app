@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.2.0] - 2026-11-14
+
+### Added
+
+- **Records.** Ten customers, one row each, with the number of disagreeing systems and a relationship-health
+  score. `/` searches by name, company or email; Enter opens the first match; clicking a row loads it into the
+  Unified view.
+- Per-record resolutions. A choice made on one customer no longer applies to another.
+- The record header, health chip and activity feed follow the selection.
+- The rail and the bottom bar gain a seventh section; keyboard **1–7** switches.
+
+### Changed
+
+- `.nm` on a list row is a block, so a name and a role no longer run together on a phone.
+- On a phone the card header wraps and the search field takes a full-width row.
+
 ## [1.1.0] - 2026-11-14
 
 ### Added

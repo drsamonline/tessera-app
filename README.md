@@ -38,12 +38,15 @@ shows **where every value came from**, and records the whole thing in a hash cha
 
 | Screen | What it does |
 |---|---|
+| **Records** | Ten customers, one row each, with the systems that disagree counted. `/` searches by name, company or email; Enter opens the first hit. |
 | **Unified** | One record. Every field names the system it came from and the rule that chose it. Click any value for its full write history. Conflicting fields are flagged in place. |
 | **Resolve** | Both values, both trust scores, and the rule the engine would apply — authority map, trust, or human review. Choose and it is logged. |
 | **Ledger** | Every event, SHA-256 chained. **Verify chain** recomputes it locally. **Tamper** proves the verification works. |
 | **Workforce** | Work goes to a position, not a person. The router shows its term-by-term arithmetic. Escalation produces a signed handoff packet. |
 | **Automate** | A workflow written by an agent is a proposal. The run button is disabled until a person approves it. |
 | **Settings** | Theme and density, stored on this device. Nothing leaves the browser. |
+
+<img src="assets/shot-records.png" alt="The records list: ten customers with their conflict counts and relationship health" width="100%">
 
 <div align="center">
 <img src="assets/shot-mobile.png" width="270" alt="The console on a phone">
@@ -91,7 +94,7 @@ Installed, it runs with the network switched off. The service worker caches the 
 | Payload | one HTML file (~43 KB) plus a service worker and an icon |
 | Contrast | every text pair measured at **≥ 4.5:1** in both themes |
 | Touch targets | **44px** minimum; the rail becomes a bottom bar under 860px |
-| Keyboard | **1–6** switch sections, **T** toggles theme, full focus rings |
+| Keyboard | **1–7** switch sections, **/** searches, **T** toggles theme, full focus rings |
 | Motion | honours `prefers-reduced-motion` |
 | Network | none after first load; no analytics, no fonts, no CDN |
 
