@@ -215,6 +215,17 @@ a{color:var(--accent)}
   border-radius:var(--r-sm);font-size:13.5px;min-height:44px;color:var(--text)}
 .pal-item[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
 .pal-item .kind{margin-left:auto;font-size:10.5px;font-family:var(--mono);opacity:.7}
+#new{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;display:grid;place-items:center;
+  padding:16px;backdrop-filter:blur(2px)}
+#new[hidden]{display:none}
+.field{display:block;margin-bottom:10px}
+.field > span{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;
+  text-transform:uppercase;letter-spacing:.06em}
+.field input,.field select{width:100%;background:var(--raise);color:var(--text);
+  border:1px solid var(--line-control);border-radius:var(--r-sm);padding:10px 12px;
+  font:inherit;font-size:13px;min-height:44px}
+@media (max-width:640px){#new{place-items:end center;padding:0}
+  #new .sheet{width:100%;border-radius:var(--r-lg) var(--r-lg) 0 0;max-height:92vh}}
 #imp{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;display:grid;place-items:center;
   padding:16px;backdrop-filter:blur(2px)}
 #imp .sheet{max-height:86vh}
@@ -470,6 +481,7 @@ a{color:var(--accent)}
         <input id="viewName" class="search" style="min-width:150px" placeholder="Name this view"
                aria-label="Name this view" autocomplete="off">
         <button class="btn small" id="saveView">Save view</button>
+        <button class="btn small primary" id="openNew">New customer</button>
         <button class="btn small" id="openImport">Import CSV</button>
       </div>
 
@@ -657,6 +669,49 @@ a{color:var(--accent)}
     <input id="palInput" type="text" placeholder="Jump to a customer, or type a command…"
            autocomplete="off" spellcheck="false">
     <div id="palList" role="listbox" aria-label="Commands"></div>
+  </div>
+</div>
+<div id="new" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="newTitle">
+    <div class="sheet-head">
+      <b id="newTitle">New customer</b>
+      <button class="iconbtn" id="newClose" aria-label="Close">✕</button>
+    </div>
+    <div class="sheet-body">
+      <p class="note" style="margin:0 0 12px">Consent, lawful basis and purpose are required, and they are not
+        defaulted — a record created with an invented lawful basis is a compliance claim nobody made.</p>
+      <label class="field"><span>Full name</span>
+        <input id="newName" placeholder="Asha Rao" autocomplete="off"></label>
+      <label class="field"><span>Email</span>
+        <input id="newEmail" type="email" placeholder="asha@acme.example" autocomplete="off"></label>
+      <label class="field"><span>Phone</span>
+        <input id="newPhone" placeholder="+91 90000 00001" autocomplete="off"></label>
+      <div class="row" style="margin:4px 0 10px">
+        <label class="field" style="flex:1 1 45%"><span>Consent</span>
+          <select id="newConsent">
+            <option value="pending">pending</option>
+            <option value="granted">granted</option>
+            <option value="withdrawn">withdrawn</option>
+            <option value="not_required">not required</option>
+          </select></label>
+        <label class="field" style="flex:1 1 45%"><span>Lawful basis</span>
+          <select id="newBasis">
+            <option value="consent">consent</option>
+            <option value="contract">contract</option>
+            <option value="legitimate_interest">legitimate interest</option>
+            <option value="legal_obligation">legal obligation</option>
+            <option value="vital_interest">vital interest</option>
+            <option value="public_task">public task</option>
+          </select></label>
+      </div>
+      <label class="field"><span>Purpose</span>
+        <input id="newPurpose" value="sales" autocomplete="off"></label>
+      <p class="note" id="newStatus"></p>
+      <div class="row" style="margin-top:10px">
+        <button class="btn primary" id="newSave">Create</button>
+        <button class="btn" id="newCancel">Cancel</button>
+      </div>
+    </div>
   </div>
 </div>
 <div id="imp" hidden>
@@ -1854,6 +1909,7 @@ document.addEventListener("keydown", event => {
   if (event.key === "Escape") {
     if (!$("#hist").hidden) closeHistory();
     if (!$("#imp").hidden) closeImport();
+    if (!$("#new").hidden) closeSheet("#new");
   }
 });
 
@@ -1932,6 +1988,77 @@ $("#palInput").onkeydown = event => {
   if (event.key === "Enter") { event.preventDefault(); runPalette(palIndex); }
 };
 $("#pal").onclick = event => { if (event.target.id === "pal") closePalette(); };
+
+/* ---- create a record ---------------------------------------------------- */
+function openNew() {
+  $("#newStatus").textContent = "";
+  openSheet("#new");
+}
+
+async function createCustomer() {
+  const status = $("#newStatus");
+  const name = ($("#newName").value || "").trim();
+  if (!name) { status.textContent = "A name is required."; $("#newName").focus(); return; }
+  const body = {
+    full_name: name,
+    consent_state: $("#newConsent").value,
+    lawful_basis: $("#newBasis").value,
+    purpose_id: ($("#newPurpose").value || "sales").trim(),
+  };
+  const email = ($("#newEmail").value || "").trim();
+  const phone = ($("#newPhone").value || "").trim();
+  if (email) body.email = email;
+  if (phone) body.phone = phone;
+
+  status.textContent = "Creating…";
+  try {
+    if (state.engine && state.engine.live) {
+      const response = await fetch(`${state.engine.url}/v1/objects/Contact`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${state.engine.token}`, "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        status.textContent = payload.detail || payload.error || `Failed: ${response.status}`;
+        return;
+      }
+      await loadEngineRecords();
+      state.selected = payload.id;
+      RECORD = activeRecord().fields;
+      ACTIVITY = activeRecord().activity;
+      save();
+      closeSheet("#new");
+      renderAll();
+      go("unified");
+      toast(`${name} created on ${payload.node}`);
+    } else {
+      // no engine: the console keeps it locally, and the queue says so
+      const id = "c" + Date.now().toString(36);
+      const record = { id, name, role: "created here", company: "-", health: 50,
+                       fields: Object.fromEntries(Object.entries(body)
+                         .filter(([field]) => field !== "full_name")
+                         .map(([field, value]) => [field, { native: value }])),
+                       activity: [] };
+      record.fields.full_name = { native: name };
+      state.customRecords = (state.customRecords || []).concat(record);
+      save();
+      closeSheet("#new");
+      renderAll();
+      toast(`${name} created in this browser`, async () => {
+        state.customRecords = state.customRecords.filter(item => item.id !== id);
+        save(); renderAll(); toast("Removed");
+      });
+    }
+  } catch (error) {
+    status.textContent = `Could not create: ${error.message}`;
+  }
+}
+
+$("#newClose").onclick = () => closeSheet("#new");
+$("#newCancel").onclick = () => closeSheet("#new");
+$("#newSave").onclick = createCustomer;
+$("#new").onclick = event => { if (event.target.id === "new") closeSheet("#new"); };
 
 /* ---- CSV import --------------------------------------------------------- */
 const IMPORT_FIELDS = ["full_name", "email", "phone", "company", "stage",
@@ -2077,7 +2204,7 @@ $("#impFile").onchange = event => {
   reader.readAsText(file);
 };
 
-["#hist", "#imp", "#pal"].forEach(id => trapFocus($(id)));
+["#hist", "#imp", "#pal", "#new"].forEach(id => trapFocus($(id)));
 
 /* ---- navigation --------------------------------------------------------- */
 function go(view, recordId) {
@@ -2124,6 +2251,7 @@ $$("[data-sort]").forEach(button => button.onclick = () => {
   state.view.sort = button.dataset.sort;
   save(); renderRecords(); syncViewBar();
 });
+$("#openNew").onclick = openNew;
 $("#openImport").onclick = openImport;
 $("#saveView").onclick = () => {
   const name = ($("#viewName").value || "").trim();

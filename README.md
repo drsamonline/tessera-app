@@ -38,7 +38,7 @@ shows **where every value came from**, and records the whole thing in a hash cha
 
 | Screen | What it does |
 |---|---|
-| **Records** | Ten customers, one row each. `/` searches, filter by conflicts, sort by health, save the view you use every morning, and **import a CSV** with a dry run and a one-press rollback. |
+| **Records** | Customers, one row each, with a **New customer** form. `/` searches, filter by conflicts, sort by health, save the view you use every morning, and **import a CSV** with a dry run and a one-press rollback. |
 | **Unified** | One record, a **connector strip** above it and **notes** below. Every field names the system it came from and the rule that chose it. Click a value for its write history; export as JSON or CSV; copy a link; **print** it; add a note — which is a ledger event, not a separate store. |
 | **Resolve** | Both values, both trust scores, the rule the engine would apply, and whether each candidate is the **current** value or a **change**. Choose one, resolve all, or press **Always** to make it a standing rule. Every choice is logged and undoable. |
 | **Ledger** | Every event, SHA-256 chained. **Verify chain** recomputes it locally. **Tamper** proves the verification works. An undo is a new event, never a deleted one. |
@@ -101,6 +101,19 @@ writes the whole workspace to one file, and **Restore** reads it back.
 | Accessibility | [A11Y.md](A11Y.md) — eight browser checks, a measured contrast table, and what was not tested |
 | Motion | honours `prefers-reduced-motion` |
 | Network | none after first load; no analytics, no fonts, no CDN |
+
+## It is a CRM, and it can be the only one
+
+Point it at an engine running `--standalone` and there is no CRM behind it: the native node is the system of record,
+**New customer** creates a record there, and every field reads `native · agreement`. Register a connector later and the
+same records become a federated view with provenance per field.
+
+```bash
+python3 -m tessera.demo --standalone     # in the engine checkout
+```
+
+Consent, lawful basis and purpose are required on create and are not defaulted — a record created with an invented
+lawful basis is a compliance claim nobody made.
 
 ## Reading from a real engine
 

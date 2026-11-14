@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.16.0] - 2026-11-14
+
+### Added
+
+- **New customer.** A form on the Records screen that creates a record through the engine — `POST /v1/objects/Contact`
+  — and lands on the new record's Unified view. With no engine it creates locally and the toast can undo it.
+- **Consent, lawful basis and purpose are required and not defaulted.** A record created with an invented lawful basis
+  is a compliance claim nobody made; the form asks, and the API refuses if it is not told.
+- Verified end to end against `python3 -m tessera.demo --standalone`: 3 contacts, create through the form's exact
+  call, 201 from the `native` node, list grows to 4.
+
+### Why this release matters
+
+Until now the console could only read. A CRM that cannot create a record is a viewer. This closes the gap that made
+"it is a CRM too" a claim rather than a description.
+
 ## [1.15.1] - 2026-11-14
 
 ### Fixed
