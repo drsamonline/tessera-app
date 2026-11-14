@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.1.0] - 2026-11-14
+
+### Added
+
+- **Field history.** Click any value on the Unified screen and a sheet opens with every ledger event that
+  touched that field: sequence, actor, the value written, and the hash prefix. It is a bottom sheet on a phone and
+  a centred dialog on a laptop, closed with Escape or the backdrop.
+
+### Changed
+
+- The app is served from the repository root. There is one landing page, in the engine repository, and it carries
+  the link; this repository is the app.
+
 ## [1.0.0] - 2026-11-14
 
 ### Added

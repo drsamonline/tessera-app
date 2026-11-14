@@ -38,7 +38,7 @@ shows **where every value came from**, and records the whole thing in a hash cha
 
 | Screen | What it does |
 |---|---|
-| **Unified** | One record. Every field names the system it came from and the rule that chose it. Conflicting fields are flagged in place. |
+| **Unified** | One record. Every field names the system it came from and the rule that chose it. Click any value for its full write history. Conflicting fields are flagged in place. |
 | **Resolve** | Both values, both trust scores, and the rule the engine would apply — authority map, trust, or human review. Choose and it is logged. |
 | **Ledger** | Every event, SHA-256 chained. **Verify chain** recomputes it locally. **Tamper** proves the verification works. |
 | **Workforce** | Work goes to a position, not a person. The router shows its term-by-term arithmetic. Escalation produces a signed handoff packet. |

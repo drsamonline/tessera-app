@@ -101,7 +101,9 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .frow:first-child{border-top:0}
 .frow:hover{background:var(--raise)}
 .frow .k{color:var(--muted);font-size:12px;letter-spacing:.01em;text-transform:capitalize}
-.frow .v{font-size:14.5px;overflow-wrap:anywhere;min-width:0}
+.frow .v{font-size:14.5px;overflow-wrap:anywhere;min-width:0;text-align:left;
+  padding:0;border-bottom:1px dashed transparent;transition:border-color var(--fast)}
+.frow .v:hover{border-bottom-color:var(--line)}
 .frow .src{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap}
 .frow[data-conflict]{background:color-mix(in srgb,var(--accent) 6%,transparent)}
 .frow[data-conflict] .v{color:var(--accent)}
@@ -162,6 +164,25 @@ button.rowaction:hover{background:var(--accent);color:var(--accent-ink)}
 .note{color:var(--muted);font-size:12.5px;line-height:1.6}
 a{color:var(--accent)}
 
+/* history sheet */
+#hist{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;display:grid;place-items:center;
+  padding:16px;backdrop-filter:blur(2px)}
+#hist[hidden]{display:none}
+.sheet{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);
+  width:min(560px,100%);max-height:min(70vh,560px);display:flex;flex-direction:column;overflow:hidden}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;
+  border-bottom:1px solid var(--line)}
+.sheet-body{padding:6px 14px 14px;overflow:auto}
+.hrow{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.hrow:last-child{border-bottom:0}
+.hrow .when{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap}
+.hrow .what{font-size:13.5px}
+.hrow .val{font-family:var(--mono);font-size:12px;color:var(--accent)}
+@media (max-width:640px){
+  #hist{place-items:end center;padding:0}
+  .sheet{width:100%;border-radius:var(--r-lg) var(--r-lg) 0 0;max-height:80vh;
+    padding-bottom:env(safe-area-inset-bottom)}
+}
 /* toast */
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(74px + env(safe-area-inset-bottom));
   background:var(--raise);border:1px solid var(--line);border-radius:999px;padding:10px 16px;font-size:13px;
@@ -395,6 +416,15 @@ a{color:var(--accent)}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/></svg><span>Settings</span></button>
   </nav>
 </div>
+<div id="hist" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="histTitle">
+    <div class="sheet-head">
+      <b id="histTitle">Field history</b>
+      <button class="iconbtn" id="histClose" aria-label="Close history">✕</button>
+    </div>
+    <div class="sheet-body" id="histBody"></div>
+  </div>
+</div>
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -599,7 +629,7 @@ function renderFields() {
     const label = field === "amount_minor" ? "Deal amount" : field.replace(/_/g, " ");
     row.innerHTML = `
       <div class="k">${label}</div>
-      <div class="v">${formatValue(field, value)}</div>
+      <button class="v" type="button" data-hist="${field}" title="See every write to this field">${formatValue(field, value)}</button>
       <div class="src">${NODES[node].label} · ${rule}</div>`;
     if (isConflict(field)) {
       const btn = document.createElement("button");
@@ -610,6 +640,7 @@ function renderFields() {
     }
     host.appendChild(row);
   }
+  $$("[data-hist]", host).forEach(btn => btn.onclick = () => openHistory(btn.dataset.hist));
   const count = Object.keys(RECORD).filter(isConflict).length;
   const chip = $("#conflictCount");
   chip.textContent = count === 1 ? "1 conflict" : `${count} conflicts`;
@@ -786,6 +817,43 @@ function renderAll() {
   $("#storageNote").textContent =
     "Preferences and the demo ledger are stored in this browser only (localStorage). Clearing site data resets them.";
 }
+
+/* ---- field history ------------------------------------------------------ */
+function openHistory(field) {
+  const label = field === "amount_minor" ? "Deal amount" : field.replace(/_/g, " ");
+  $("#histTitle").textContent = label;
+  const events = (state.ledger || []).filter(event =>
+    (event.payload && event.payload.field === field) ||
+    (event.action === "conflict.resolved" && event.payload.field === field));
+
+  const current = currentValue(field);
+  const rows = events.length
+    ? events.map(event => `
+        <div class="hrow">
+          <span class="when">#${event.seq} · ${event.actor}</span>
+          <span class="what">${event.action}
+            <span class="val">${event.payload.value !== undefined ? event.payload.value : (event.payload.winner || "")}</span>
+            <span class="mono"> ${event.hash.slice(0, 10)}…</span>
+          </span>
+        </div>`).join("")
+    : `<p class="note">No event has touched this field yet. The current value comes from
+         <b>${NODES[current.node].label}</b> by ${current.rule}.</p>`;
+
+  $("#histBody").innerHTML = rows + `
+    <p class="note" style="margin-top:12px">Every write is in the chain. Close this and press
+      <b>Verify chain</b> on the Ledger screen to recompute all of it.</p>`;
+  $("#hist").hidden = false;
+  $("#histClose").focus();
+}
+
+function closeHistory() {
+  $("#hist").hidden = true;
+}
+$("#histClose").onclick = closeHistory;
+$("#hist").onclick = event => { if (event.target.id === "hist") closeHistory(); };
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape" && !$("#hist").hidden) closeHistory();
+});
 
 /* ---- navigation --------------------------------------------------------- */
 function go(view) {

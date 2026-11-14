@@ -14,7 +14,7 @@ Ordered by what a person would notice first.
 | 1 | **Real record search** — a `/` search over all records with keyboard selection | The unified view is one record; a CRM is ten thousand. Without search it is a demo, not a tool | M |
 | 2 | **Multi-record list with saved views** — filter, sort, save, restore | Turns the console from a showcase into something you would open on a Monday | M |
 | 3 | **Bulk resolve** — apply one rule to every conflict of the same kind | Resolving thirty emails one at a time is where adoption dies | S |
-| 4 | **Field history popover** — click any value, see every write with actor and time | The ledger is the differentiator; hiding it behind a tab wastes it | S |
+| 4 | ~~**Field history popover**~~ — click any value, see every write with actor and time | **Shipped in 1.1.0.** The ledger is the differentiator; hiding it behind a tab wasted it | done |
 | 5 | **Conflict preview before merge** — a diff of what changes if you accept a rule | Turns a guess into a decision | S |
 | 6 | **Connector status strip** — per system: last sync, error count, staleness | The one screen an operator actually needs at 9am | S |
 | 7 | **CSV import with dry run** — map, preview, commit, roll back | The single most requested feature of every CRM migration | M |
