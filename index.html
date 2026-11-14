@@ -1327,7 +1327,10 @@ function renderConflicts() {
 
 function renderLedger() {
   const host = $("#ledgerRows");
-  if (!state.ledger) { host.innerHTML = ""; return; }
+  if (!state.ledger) {
+    host.innerHTML = `<tr><td colspan="4" class="empty">Building the chain…</td></tr>`;
+    return;
+  }
   host.innerHTML = state.ledger.map(event => `
     <tr data-seq="${event.seq}">
       <td class="mono">${event.seq}</td>
@@ -2026,6 +2029,15 @@ document.addEventListener("keydown", event => {
 
 /* ---- boot --------------------------------------------------------------- */
 (async function boot() {
+  // Paint first, hydrate second. Awaiting storage before the first render leaves
+  // an empty shell for however long IndexedDB takes - and forever if it is
+  // blocked, which is exactly what a private window does.
+  applyTheme(state.theme);
+  applyDensity(state.density);
+  renderAll();
+  syncViewBar();
+  renderSavedViews();
+
   state = await loadState();
   applyTheme(state.theme);
   applyDensity(state.density);

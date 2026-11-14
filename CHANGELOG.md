@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.9.1] - 2026-11-14
+
+### Fixed
+
+- **Boot no longer waits on storage.** `await loadState()` ran before the first render, so the app showed an empty
+  shell for however long IndexedDB took — and forever in a private window, where it is blocked. It now paints from
+  the in-memory defaults, then hydrates and re-renders. Verified at a 2-second budget: ten records visible.
+- The ledger table shows "Building the chain…" instead of an empty body while the chain is hashed.
+
+Found by a DOM dump that returned `records: 0` — the test was flaky because the app genuinely was.
+
 ## [1.9.0] - 2026-11-14
 
 ### Added
