@@ -44,7 +44,7 @@ shows **where every value came from**, and records the whole thing in a hash cha
 | **Ledger** | Every event, SHA-256 chained. **Verify chain** recomputes it locally. **Tamper** proves the verification works. An undo is a new event, never a deleted one. |
 | **Workforce** | Work goes to a position, not a person. The router shows its term-by-term arithmetic. **Assign**, **assign to me**, or **escalate** with a signed packet — each undoable. |
 | **Automate** | A workflow written by an agent is a proposal. The run button is disabled until a person approves it. |
-| **Settings** | Theme and density, stored on this device. Nothing leaves the browser. |
+| **Settings** | Theme, density, live storage report, and a one-file **workspace backup** with restore and undo. Nothing leaves the browser. |
 
 <img src="assets/shot-records.png" alt="The records list: ten customers with their conflict counts and relationship health" width="100%">
 
@@ -84,7 +84,8 @@ python3 -m http.server 8000        # then http://localhost:8000/
 ```
 
 Installed, it runs with the network switched off. The service worker caches the shell; the state lives in
-`localStorage`; the ledger is rebuilt locally if you clear site data.
+IndexedDB with a `localStorage` mirror; the ledger is rebuilt locally if you clear site data. **Settings → Download**
+writes the whole workspace to one file, and **Restore** reads it back.
 
 ## Properties
 

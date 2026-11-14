@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.9.0] - 2026-11-14
+
+### Added
+
+- **IndexedDB storage.** The state document is written to IndexedDB and mirrored to `localStorage`. The mirror keeps
+  every call site synchronous and the UI instant; IndexedDB is the copy that survives the 5 MB ceiling and an
+  eviction of the small store. On first boot an existing `localStorage` document is migrated across.
+- **Workspace backup.** Settings gains **Download** and **Restore**: one JSON file containing your resolutions,
+  standing rules, imported records and the ledger. Restoring is undoable.
+- **Live storage report.** Backend, bytes used, quota, record count and ledger length, read from
+  `navigator.storage.estimate()` rather than estimated by hand.
+
+### Measured
+
+`Backend: IndexedDB + localStorage mirror · Used: 72 KB of 10240 MB available · Records: 10 · ledger events: 5`
+
 ## [1.8.0] - 2026-11-14
 
 ### Added

@@ -556,6 +556,22 @@ a{color:var(--accent)}
         </div>
       </div>
       <div class="card" style="margin-top:12px">
+        <header>Workspace</header>
+        <div class="body">
+          <div class="setting">
+            <div><b>Back up everything</b>
+              <div class="note">One file: your resolutions, rules, imported records and the ledger.</div></div>
+            <div class="row">
+              <button class="btn small" id="exportWorkspace">Download</button>
+              <button class="btn small" id="importWorkspace">Restore</button>
+              <input type="file" id="workspaceFile" accept="application/json" hidden>
+            </div>
+          </div>
+          <p class="note" id="storageStatus">Checking storage…</p>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
         <header>About</header>
         <div class="body">
           <p class="note">
@@ -879,17 +895,82 @@ const DEFAULT_STATE = {
   escalated: null,
   workflowEnabled: { "w1": true, "w2": true },
 };
-let state = load();
+let state = structuredClone(DEFAULT_STATE);
 
-function load() {
-  try {
-    const raw = localStorage.getItem("tessera.console.v1");
-    if (!raw) return structuredClone(DEFAULT_STATE);
-    return Object.assign(structuredClone(DEFAULT_STATE), JSON.parse(raw));
-  } catch { return structuredClone(DEFAULT_STATE); }
+/* Two stores on purpose. localStorage is synchronous, so every call site stays
+   simple and the UI never waits; IndexedDB holds the same document without the
+   5 MB ceiling and is the copy that survives an eviction of the small one. */
+const STORE_KEY = "tessera.console.v1";
+const DB_NAME = "tessera-console";
+const DB_STORE = "state";
+let storageBackend = "memory";
+
+function idbOpen() {
+  return new Promise((resolve, reject) => {
+    if (!("indexedDB" in window)) { reject(new Error("no indexedDB")); return; }
+    const request = indexedDB.open(DB_NAME, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(DB_STORE)) db.createObjectStore(DB_STORE);
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
 }
+
+function idbRun(mode, work) {
+  return idbOpen().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(DB_STORE, mode);
+    const store = tx.objectStore(DB_STORE);
+    const request = work(store);
+    tx.oncomplete = () => { db.close(); resolve(request && request.result); };
+    tx.onerror = () => { db.close(); reject(tx.error); };
+  }));
+}
+
+const idbGet = key => idbRun("readonly", store => store.get(key));
+const idbSet = (key, value) => idbRun("readwrite", store => store.put(value, key));
+
+function mergeState(raw) {
+  const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+  return Object.assign(structuredClone(DEFAULT_STATE), parsed || {});
+}
+
+async function loadState() {
+  try {
+    const fromIdb = await idbGet(STORE_KEY);
+    if (fromIdb) { storageBackend = "indexeddb"; return mergeState(fromIdb); }
+  } catch {}
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) {
+      const merged = mergeState(raw);
+      idbSet(STORE_KEY, merged).then(() => { storageBackend = "indexeddb"; }).catch(() => {});
+      storageBackend = "localstorage";
+      return merged;
+    }
+  } catch {}
+  storageBackend = "indexeddb";
+  return structuredClone(DEFAULT_STATE);
+}
+
 function save() {
-  try { localStorage.setItem("tessera.console.v1", JSON.stringify(state)); } catch {}
+  let serialised;
+  try { serialised = JSON.stringify(state); } catch { return; }
+  try { localStorage.setItem(STORE_KEY, serialised); } catch {}
+  idbSet(STORE_KEY, serialised).then(() => { storageBackend = "indexeddb"; }).catch(() => {});
+}
+
+async function storageReport() {
+  const lines = [`Backend: ${storageBackend === "indexeddb" ? "IndexedDB + localStorage mirror" : "localStorage only"}`];
+  try {
+    const estimate = await navigator.storage.estimate();
+    if (estimate && estimate.quota) {
+      lines.push(`Used: ${(estimate.usage / 1024).toFixed(0)} KB of ${(estimate.quota / 1048576).toFixed(0)} MB available`);
+    }
+  } catch { lines.push("Quota: not reported by this browser"); }
+  lines.push(`Records: ${allRecords().length} · ledger events: ${(state.ledger || []).length}`);
+  return lines.join(" · ");
 }
 
 /* ---- the ledger --------------------------------------------------------- */
@@ -1363,6 +1444,11 @@ function renderWorkflows() {
   });
 }
 
+async function refreshStorage() {
+  const el = $("#storageStatus");
+  if (el) el.textContent = await storageReport();
+}
+
 function renderAll() {
   const record = activeRecord();
   $("#recordName").textContent = record.name;
@@ -1379,7 +1465,8 @@ function renderAll() {
   renderFields(); renderTimeline(); renderRules(); renderConflicts(); renderLedger(); renderSeats();
   renderRouting(); renderWorkflows();
   $("#storageNote").textContent =
-    "Preferences and the demo ledger are stored in this browser only (localStorage). Clearing site data resets them.";
+    "Everything is stored in this browser only - IndexedDB with a localStorage mirror. Clearing site data resets it; " +
+    "use Download above for a real backup.";
 }
 
 /* ---- field history ------------------------------------------------------ */
@@ -1745,6 +1832,43 @@ $("#exportCsv").onclick = () => {
   toast("Exported as CSV");
 };
 
+$("#exportWorkspace").onclick = () => {
+  const bundle = { app: "tessera-console", version: "1.9.0",
+                   exported_at: new Date().toISOString(), state };
+  download(`tessera-workspace-${bundle.exported_at.slice(0, 10)}.json`,
+           JSON.stringify(bundle, null, 2), "application/json");
+  toast("Workspace downloaded");
+};
+
+$("#importWorkspace").onclick = () => $("#workspaceFile").click();
+$("#workspaceFile").onchange = event => {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const bundle = JSON.parse(reader.result);
+      const incoming = bundle.state || bundle;
+      if (!incoming || typeof incoming !== "object" || !Array.isArray(incoming.customRecords || [])) {
+        toast("That file is not a TESSERA workspace");
+        return;
+      }
+      const before = structuredClone(state);
+      state = mergeState(incoming);
+      save();
+      RECORD = activeRecord().fields;
+      ACTIVITY = activeRecord().activity;
+      applyTheme(state.theme); applyDensity(state.density);
+      $("#search").value = state.query || "";
+      renderAll(); renderSavedViews(); syncViewBar(); refreshStorage();
+      toast("Workspace restored", () => {
+        state = before; save(); renderAll(); refreshStorage(); toast("Restore undone");
+      });
+    } catch { toast("That file could not be read"); }
+  };
+  reader.readAsText(file);
+};
+
 $("#printOne").onclick = () => {
   appendEvent("record.printed", "human", { record: state.selected });
   window.print();
@@ -1902,6 +2026,7 @@ document.addEventListener("keydown", event => {
 
 /* ---- boot --------------------------------------------------------------- */
 (async function boot() {
+  state = await loadState();
   applyTheme(state.theme);
   applyDensity(state.density);
   await ensureLedger();
@@ -1936,6 +2061,7 @@ document.addEventListener("keydown", event => {
   }
   syncViewBar();
   renderSavedViews();
+  refreshStorage();
   if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
     navigator.serviceWorker.register("sw.js").catch(() => {});
   }
