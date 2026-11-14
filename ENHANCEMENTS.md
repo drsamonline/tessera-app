@@ -12,16 +12,16 @@ Ordered by what a person would notice first.
 | # | Enhancement | Why it matters | Effort |
 |---|---|---|---|
 | 1 | ~~**Real record search**~~ — a `/` search over all records with keyboard selection | **Shipped in 1.2.0.** Ten records, `/` to search, Enter to open | done |
-| 2 | **Multi-record list** — shipped in 1.2.0. **Saved views** (filter, sort, save, restore) still open | Turns the console from a showcase into something you would open on a Monday | M |
+| 2 | ~~**Multi-record list with saved views**~~ — list in 1.2.0, filter/sort/save in 1.4.0 | Turns the console from a showcase into something you would open on a Monday | done |
 | 3 | ~~**Bulk resolve**~~ — apply one rule to every conflict of the same kind | **Shipped in 1.3.0.** One button, engine's rule, undoable | done |
 | 4 | ~~**Field history popover**~~ — click any value, see every write with actor and time | **Shipped in 1.1.0.** The ledger is the differentiator; hiding it behind a tab wasted it | done |
 | 5 | **Conflict preview before merge** — a diff of what changes if you accept a rule | Turns a guess into a decision | S |
 | 6 | **Connector status strip** — per system: last sync, error count, staleness | The one screen an operator actually needs at 9am | S |
 | 7 | **CSV import with dry run** — map, preview, commit, roll back | The single most requested feature of every CRM migration | M |
 | 8 | **Saved resolver rules** — "always take NetSuite for amounts" as a stored policy | Repeated decisions should become policy, not habit | M |
-| 9 | **Export the unified record** — JSON, CSV, and a printable one-pager | People need to send the record to somebody who is not in the app | S |
+| 9 | ~~**Export the unified record**~~ — JSON and CSV shipped in 1.4.0. **Printable one-pager** still open | People need to send the record to somebody who is not in the app | S |
 | 10 | **Keyboard-first command palette** — `⌘K` with actions, not just navigation | The power users are the ones who will keep it open | S |
-| 11 | **Deep links** — `#unified/contact/123` opens that record | Makes the app shareable in Slack, which is how tools spread | S |
+| 11 | ~~**Deep links**~~ — `#unified/c4` and a Copy link button, shipped in 1.4.0 | Makes the app shareable in Slack, which is how tools spread | done |
 | 12 | **Notes and mentions** — a comment thread per record, stored locally | A record without a conversation is a report | M |
 | 13 | **Assign to me** — a one-tap self-assign that logs a ledger event | The most common action in any support tool | S |
 | 14 | **Undo** — shipped for resolve and bulk resolve in 1.3.0. **Still to do:** assign, escalate, workflow fire | Undo by compensating event is the ledger's superpower and nothing used it | M |

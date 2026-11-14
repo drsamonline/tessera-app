@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.4.0] - 2026-11-14
+
+### Added
+
+- **Saved views.** Filter the list by conflicts or agreement, sort by name, health or conflict count, and save the
+  combination under a name. Saved views live in `localStorage` and restore from the dropdown.
+- **Export.** The unified record downloads as JSON with full provenance, or as CSV for a spreadsheet. Both write a
+  `record.exported` event, because an export is an action.
+- **Deep links.** `#unified/c4` opens that customer, `#records` opens the list, and a **Copy link** button puts the
+  current one on the clipboard. The hash updates as you move.
+
+### Fixed
+
+- The mobile toolbar took four rows and put "Save view" above the field it saves. The `.search` order rule was
+  scoped to the card header and the toolbar now fits three compact rows.
+
 ## [1.3.0] - 2026-11-14
 
 ### Added

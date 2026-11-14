@@ -38,8 +38,8 @@ shows **where every value came from**, and records the whole thing in a hash cha
 
 | Screen | What it does |
 |---|---|
-| **Records** | Ten customers, one row each, with the systems that disagree counted. `/` searches by name, company or email; Enter opens the first hit. |
-| **Unified** | One record. Every field names the system it came from and the rule that chose it. Click any value for its full write history. Conflicting fields are flagged in place. |
+| **Records** | Ten customers, one row each, with the systems that disagree counted. `/` searches, filter by conflicts, sort by health, and save the view you use every morning. |
+| **Unified** | One record. Every field names the system it came from and the rule that chose it. Click any value for its write history; export the record as JSON or CSV; copy a link that opens it. |
 | **Resolve** | Both values, both trust scores, and the rule the engine would apply. Choose one, or **resolve all** with the engine's rule. Every choice is logged and every choice can be undone. |
 | **Ledger** | Every event, SHA-256 chained. **Verify chain** recomputes it locally. **Tamper** proves the verification works. An undo is a new event, never a deleted one. |
 | **Workforce** | Work goes to a position, not a person. The router shows its term-by-term arithmetic. Escalation produces a signed handoff packet. |
@@ -95,6 +95,7 @@ Installed, it runs with the network switched off. The service worker caches the 
 | Contrast | every text pair measured at **≥ 4.5:1** in both themes |
 | Touch targets | **44px** minimum; the rail becomes a bottom bar under 860px |
 | Keyboard | **1–7** switch sections, **/** searches, **T** toggles theme, full focus rings |
+| Deep links | `#unified/c4` opens that customer; `#records` opens the list |
 | Motion | honours `prefers-reduced-motion` |
 | Network | none after first load; no analytics, no fonts, no CDN |
 

@@ -98,6 +98,10 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .search{margin-left:auto;background:var(--raise);color:var(--text);border:1px solid var(--line);
   border-radius:999px;padding:8px 14px;font:inherit;font-size:13px;min-width:220px;max-width:46vw}
 .search:focus{outline:2px solid var(--accent);outline-offset:1px}
+#viewBar{margin-bottom:12px}
+#viewBar .seg button{min-height:36px}
+#viewBar select{background:var(--raise);color:var(--text);border:1px solid var(--line);
+  border-radius:var(--r-sm);padding:8px 10px;font:inherit;font-size:12.5px;max-width:170px}
 .rec{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;align-items:center;
   padding:12px 14px;border-top:1px solid var(--line);width:100%;text-align:left;
   min-height:64px;background:none;transition:background var(--fast)}
@@ -234,7 +238,13 @@ a{color:var(--accent)}
   .record .who b{font-size:15.5px}
   .ledger th:nth-child(3),.ledger td:nth-child(3){display:none}
   .card > header{flex-wrap:wrap}
-  .search{margin-left:0;width:100%;max-width:none;order:3}
+  .card > header .search{margin-left:0;width:100%;max-width:none;order:3}
+  #viewBar{gap:8px}
+  #viewBar .seg{flex:1 1 auto}
+  #viewBar .seg button{flex:1;padding:0 8px}
+  #viewBar select{flex:1 1 44%;max-width:none}
+  #viewName{flex:1 1 44%;min-width:0;max-width:none;margin-left:0}
+  #saveView{flex:1 1 44%}
   .rec{grid-template-columns:36px minmax(0,1fr);gap:10px;padding:12px}
   .rec .right{grid-column:1/-1;justify-content:flex-start;margin-top:2px}
 }
@@ -299,7 +309,10 @@ a{color:var(--accent)}
     <section class="view" id="unified" data-active>
       <h1 id="recordName">Asha Rao</h1>
       <p class="sub">One customer, four systems, one record. Every field says where it came from.
-        <button class="rowaction" id="backToList" style="margin-left:8px">All records</button></p>
+        <button class="rowaction" id="backToList" style="margin-left:8px">All records</button>
+        <button class="rowaction" id="exportJson" style="margin-left:6px">Export JSON</button>
+        <button class="rowaction" id="exportCsv" style="margin-left:6px">Export CSV</button>
+        <button class="rowaction" id="copyLink" style="margin-left:6px">Copy link</button></p>
 
       <div class="grid2">
         <div class="card">
@@ -330,6 +343,23 @@ a{color:var(--accent)}
     <section class="view" id="records">
       <h1>Records</h1>
       <p class="sub">Every customer, one row each, with the systems that disagree counted. Press <kbd>/</kbd> to search.</p>
+      <div class="row" id="viewBar">
+        <div class="seg" id="filterSeg" aria-label="Filter">
+          <button data-filter="all" aria-pressed="true">All</button>
+          <button data-filter="conflicts" aria-pressed="false">Conflicts</button>
+          <button data-filter="agrees" aria-pressed="false">Agrees</button>
+        </div>
+        <div class="seg" id="sortSeg" aria-label="Sort">
+          <button data-sort="name" aria-pressed="true">Name</button>
+          <button data-sort="health" aria-pressed="false">Health</button>
+          <button data-sort="conflicts" aria-pressed="false">Conflicts</button>
+        </div>
+        <select id="savedViews" aria-label="Saved views"><option value="">Saved views…</option></select>
+        <input id="viewName" class="search" style="min-width:150px" placeholder="Name this view"
+               aria-label="Name this view" autocomplete="off">
+        <button class="btn small" id="saveView">Save view</button>
+      </div>
+
       <div class="card">
         <header>
           <span>Customers</span>
@@ -696,6 +726,8 @@ function routeScore(terms) {
 const DEFAULT_STATE = {
   selected: "c1",
   query: "",
+  view: { filter: "all", sort: "name" },
+  savedViews: {},
   resolved: {},          // "recordId|field" -> chosen node
   ledger: null,          // [{seq, action, actor, payload, hash, prev}]
   theme: "dark",
@@ -813,15 +845,25 @@ function conflictsIn(record) {
 
 function renderRecords() {
   const query = (state.query || "").trim().toLowerCase();
+  const { filter, sort } = state.view || { filter: "all", sort: "name" };
   const matches = RECORDS.filter(record => {
-    if (!query) return true;
-    const haystack = [record.name, record.company, record.role,
-      ...Object.values(record.fields.email || {}),
-      ...Object.values(record.fields.company || {})].join(" ").toLowerCase();
-    return haystack.includes(query);
+    if (query) {
+      const haystack = [record.name, record.company, record.role,
+        ...Object.values(record.fields.email || {}),
+        ...Object.values(record.fields.company || {})].join(" ").toLowerCase();
+      if (!haystack.includes(query)) return false;
+    }
+    const conflicts = conflictsIn(record);
+    if (filter === "conflicts" && conflicts === 0) return false;
+    if (filter === "agrees" && conflicts > 0) return false;
+    return true;
+  }).sort((a, b) => {
+    if (sort === "health") return b.health - a.health;
+    if (sort === "conflicts") return conflictsIn(b) - conflictsIn(a) || a.name.localeCompare(b.name);
+    return a.name.localeCompare(b.name);
   });
 
-  $("#recordCount").textContent = query
+  $("#recordCount").textContent = (query || filter !== "all")
     ? `${matches.length} of ${RECORDS.length}`
     : `${RECORDS.length} customers`;
 
@@ -1167,15 +1209,119 @@ document.addEventListener("keydown", event => {
 });
 
 /* ---- navigation --------------------------------------------------------- */
-function go(view) {
+function go(view, recordId) {
   $$(".view").forEach(section => section.toggleAttribute("data-active", section.id === view));
   $$("[data-go]").forEach(button => button.setAttribute("aria-current", String(button.dataset.go === view)));
   $("#main").scrollTop = 0;
-  if (location.hash !== "#" + view) history.replaceState(null, "", "#" + view);
+  const target = view === "unified" ? `#unified/${state.selected}` : `#${view}`;
+  if (location.hash !== target) history.replaceState(null, "", target);
+}
+
+function routeFromHash() {
+  const raw = location.hash.replace("#", "");
+  if (!raw) return null;
+  const [view, recordId] = raw.split("/");
+  return { view, recordId };
 }
 
 $$("[data-go]").forEach(button => button.onclick = () => go(button.dataset.go));
 $("#backToList").onclick = () => go("records");
+$$("[data-filter]").forEach(button => button.onclick = () => {
+  state.view.filter = button.dataset.filter;
+  save(); renderRecords(); syncViewBar();
+});
+$$("[data-sort]").forEach(button => button.onclick = () => {
+  state.view.sort = button.dataset.sort;
+  save(); renderRecords(); syncViewBar();
+});
+$("#saveView").onclick = () => {
+  const name = ($("#viewName").value || "").trim();
+  if (!name) { toast("Name the view first"); $("#viewName").focus(); return; }
+  state.savedViews[name] = { ...state.view };
+  $("#viewName").value = "";
+  save(); renderSavedViews(); toast(`Saved view “${name}”`);
+};
+$("#savedViews").onchange = event => {
+  const name = event.target.value;
+  if (!name || !state.savedViews[name]) return;
+  state.view = { ...state.savedViews[name] };
+  save(); renderRecords(); syncViewBar(); toast(`View “${name}”`);
+};
+
+function syncViewBar() {
+  $$("[data-filter]").forEach(button =>
+    button.setAttribute("aria-pressed", String(button.dataset.filter === state.view.filter)));
+  $$("[data-sort]").forEach(button =>
+    button.setAttribute("aria-pressed", String(button.dataset.sort === state.view.sort)));
+}
+
+function renderSavedViews() {
+  const select = $("#savedViews");
+  const names = Object.keys(state.savedViews || {});
+  select.innerHTML = `<option value="">Saved views…</option>` +
+    names.map(name => `<option value="${name}">${name}</option>`).join("");
+  select.disabled = names.length === 0;
+}
+
+/* ---- export and deep links --------------------------------------------- */
+function download(filename, text, type) {
+  const blob = new Blob([text], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function unifiedPayload() {
+  const record = activeRecord();
+  return {
+    id: record.id,
+    name: record.name,
+    role: record.role,
+    company: record.company,
+    relationship_health: record.health,
+    exported_at: new Date().toISOString(),
+    fields: Object.fromEntries(Object.keys(record.fields).map(field => {
+      const chosen = currentValue(field);
+      return [field, { value: chosen.value, source: chosen.node, rule: chosen.rule }];
+    })),
+    conflicts_open: Object.keys(record.fields).filter(isConflict),
+  };
+}
+
+$("#exportJson").onclick = () => {
+  const payload = unifiedPayload();
+  download(`tessera-${payload.id}.json`, JSON.stringify(payload, null, 2), "application/json");
+  appendEvent("record.exported", "human", { record: payload.id, format: "json" });
+  toast("Exported as JSON");
+};
+
+$("#exportCsv").onclick = () => {
+  const payload = unifiedPayload();
+  const fields = Object.keys(payload.fields);
+  const head = ["id", "name", ...fields, "conflicts_open"].join(",");
+  const row = [payload.id, `"${payload.name}"`,
+    ...fields.map(field => `"${String(payload.fields[field].value).replace(/"/g, '""')}"`),
+    payload.conflicts_open.length].join(",");
+  download(`tessera-${payload.id}.csv`, head + "\n" + row + "\n", "text/csv");
+  appendEvent("record.exported", "human", { record: payload.id, format: "csv" });
+  toast("Exported as CSV");
+};
+
+$("#copyLink").onclick = async () => {
+  const url = `${location.origin}${location.pathname}#unified/${state.selected}`;
+  try {
+    await navigator.clipboard.writeText(url);
+    toast("Link copied");
+  } catch {
+    toast(url);
+  }
+};
+
 $("#search").oninput = event => {
   state.query = event.target.value;
   save();
@@ -1298,8 +1444,20 @@ document.addEventListener("keydown", event => {
   RECORD = record.fields;
   ACTIVITY = record.activity;
   renderAll();
-  const hash = location.hash.replace("#", "");
-  if (hash) go(hash);
+  const route = routeFromHash();
+  if (route) {
+    if (route.recordId && RECORDS.some(r => r.id === route.recordId)) {
+      state.selected = route.recordId;
+      const record = activeRecord();
+      RECORD = record.fields;
+      ACTIVITY = record.activity;
+      save();
+      renderAll();
+    }
+    if (document.getElementById(route.view)) go(route.view);
+  }
+  syncViewBar();
+  renderSavedViews();
   if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
     navigator.serviceWorker.register("sw.js").catch(() => {});
   }
