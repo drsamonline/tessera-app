@@ -15,6 +15,11 @@
 - Both themes measured at WCAG AA contrast; 44px touch targets; keyboard shortcuts 1–6 and T; reduced-motion honoured.
 - Landing page, README with badges and screenshots, `ENHANCEMENTS.md`, `BUILDING.md`, PolyForm Noncommercial licence.
 
+### Changed
+
+- The app is served from the repository root, not from `app/`. One URL, no separate landing page: the engine
+  repository already has the landing page and it is the one that should carry the link.
+
 ### Notes
 
 - The demo data is invented. No real person, company or tenant is described.

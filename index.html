@@ -1,306 +1,905 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="dark" data-density="comfortable">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TESSERA — one customer view across every system</title>
-<meta name="description" content="A working console for the TESSERA reference core: field-level merge, conflict resolution, a hash-chained ledger and seat-based routing. Runs in your browser, offline, with no server.">
-<meta name="theme-color" content="#0b0d10">
-<meta property="og:title" content="TESSERA — one customer view across every system">
-<meta property="og:description" content="Field-level merge, conflict resolution, a tamper-evident ledger and seat-based routing. In your browser. Offline.">
-<meta property="og:image" content="assets/shot-desktop.png">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TESSERA — console</title>
+<meta name="description" content="One customer view across every system, with a tamper-evident ledger. Runs entirely in your browser, offline.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ee" media="(prefers-color-scheme: light)">
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
 <style>
+/* ---- tokens: the same values the reference core measures ------------------ */
 :root{
-  --bg:#0b0d10;--surface:#14181d;--raise:#1c2229;--line:#2a3038;--text:#e8e6e1;--muted:#a3acb6;
-  --accent:#d9a441;--accent-ink:#0b0d10;--teal:#5fb3ac;--ok:#56d364;
+  --bg:#0b0d10; --surface:#14181d; --raise:#1c2229; --line:#2a3038;
+  --text:#e8e6e1; --muted:#a3acb6; --accent:#d9a441; --accent-ink:#0b0d10;
+  --teal:#5fb3ac; --danger:#ff7b72; --ok:#56d364;
+  --r-sm:6px; --r:10px; --r-lg:14px;
+  --sp:16px; --gap:12px;
+  --fast:120ms; --base:150ms;
   --font:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
 }
-*{box-sizing:border-box}
-html{scroll-behavior:smooth}
-body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.6;
-  -webkit-font-smoothing:antialiased}
-a{color:var(--accent);text-decoration:none}
-a:hover{text-decoration:underline}
-:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px}
-.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
-
-/* nav */
-nav{position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--bg) 88%,transparent);
-  backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
-nav .wrap{display:flex;align-items:center;gap:14px;height:62px}
-.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.14em;font-size:14px}
-.brand svg{width:26px;height:26px}
-nav .links{margin-left:auto;display:flex;gap:18px;font-size:13.5px;color:var(--muted)}
-nav .links a{color:var(--muted)}
-nav .links a:hover{color:var(--text);text-decoration:none}
-.cta{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 18px;
-  border-radius:10px;background:var(--accent);color:var(--accent-ink)!important;font-weight:650;
-  font-size:13.5px;border:1px solid var(--accent)}
-.cta:hover{text-decoration:none;filter:brightness(1.06)}
-.cta.ghost{background:transparent;color:var(--text)!important;border-color:var(--line)}
-
-/* hero */
-header.hero{padding:72px 0 40px;position:relative;overflow:hidden}
-header.hero::before{content:"";position:absolute;inset:-40% -10% auto -10%;height:520px;
-  background:radial-gradient(60% 60% at 30% 20%,color-mix(in srgb,var(--accent) 18%,transparent),transparent 70%),
-             radial-gradient(50% 50% at 75% 10%,color-mix(in srgb,var(--teal) 14%,transparent),transparent 70%);
-  pointer-events:none}
-.hero .wrap{position:relative}
-.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.14em;
-  text-transform:uppercase;color:var(--accent);margin-bottom:18px}
-h1{font-size:clamp(32px,5vw,54px);line-height:1.08;letter-spacing:-.02em;margin:0 0 18px;max-width:20ch}
-h1 em{font-style:normal;color:var(--accent)}
-.lede{font-size:clamp(15px,1.6vw,18px);color:var(--muted);max-width:60ch;margin:0 0 28px}
-.actions{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px}
-.meta{font-size:12.5px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap}
-.meta span{display:inline-flex;align-items:center;gap:6px}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
-
-/* the shot */
-.shot{margin:44px 0 0;border:1px solid var(--line);border-radius:16px;overflow:hidden;
-  background:var(--surface);box-shadow:0 30px 80px -40px rgba(0,0,0,.9)}
-.shot img{display:block;width:100%;height:auto}
-.shot .chrome{display:flex;gap:7px;padding:10px 14px;border-bottom:1px solid var(--line);
-  background:var(--raise)}
-.shot .chrome i{width:10px;height:10px;border-radius:50%;background:var(--line);display:block}
-
-/* sections */
-section{padding:64px 0;border-top:1px solid var(--line)}
-h2{font-size:clamp(22px,2.6vw,30px);letter-spacing:-.015em;margin:0 0 10px}
-.sub{color:var(--muted);margin:0 0 34px;max-width:62ch}
-.cols{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px}
-.card h3{margin:0 0 8px;font-size:16px}
-.card p{margin:0;color:var(--muted);font-size:14px}
-.card .tag{font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:.08em;
-  text-transform:uppercase;display:block;margin-bottom:10px}
-figure{margin:0;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface)}
-figure img{display:block;width:100%;height:auto}
-figcaption{padding:12px 16px;font-size:13px;color:var(--muted);border-top:1px solid var(--line)}
-.two{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
-.two .mobile{max-width:300px;margin:0 auto}
-table{width:100%;border-collapse:collapse;font-size:14px}
-th,td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--line)}
-th{color:var(--muted);font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:.06em}
-td b{font-weight:600}
-code{font-family:var(--mono);font-size:.92em;background:var(--raise);padding:2px 6px;border-radius:5px}
-pre{background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:16px;overflow:auto;
-  font-family:var(--mono);font-size:13px;line-height:1.7}
-.honest{border-left:3px solid var(--accent);padding-left:18px;color:var(--muted);font-size:14px}
-footer{border-top:1px solid var(--line);padding:40px 0 60px;color:var(--muted);font-size:13.5px}
-footer .wrap{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
-footer b{color:var(--text)}
-@media (max-width:720px){
-  nav .links{display:none}
-  header.hero{padding:44px 0 24px}
-  section{padding:44px 0}
+html[data-theme="light"]{
+  --bg:#f7f4ee; --surface:#fff; --raise:#fff; --line:#cfc7b8;
+  --text:#14181d; --muted:#4f5760; --accent:#7a5512; --accent-ink:#fff;
+  --teal:#1f6b66; --danger:#a4262c; --ok:#1a6e33;
 }
-@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+html[data-density="compact"]{ --sp:10px; --gap:8px; }
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--bg); color:var(--text); font-family:var(--font);
+  font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+  overscroll-behavior:none;
+}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:var(--r-sm)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---- shell --------------------------------------------------------------- */
+.app{display:grid; height:100dvh;
+  grid-template-columns:64px 1fr;
+  grid-template-rows:56px 1fr;
+  grid-template-areas:"rail bar" "rail main";}
+.bar{grid-area:bar; display:flex; align-items:center; gap:10px; padding:0 14px;
+  border-bottom:1px solid var(--line); background:var(--surface); position:relative; z-index:20}
+.rail{grid-area:rail; display:flex; flex-direction:column; gap:4px; padding:8px 6px;
+  border-right:1px solid var(--line); background:var(--surface)}
+.main{grid-area:main; overflow:auto; -webkit-overflow-scrolling:touch}
+.tabs{display:none}
+
+.rail button{display:grid; place-items:center; gap:2px; height:52px; border-radius:var(--r);
+  color:var(--muted); transition:color var(--fast), background var(--fast)}
+.rail button span{font-size:9.5px; letter-spacing:.02em}
+.rail button:hover{color:var(--text); background:var(--raise)}
+.rail button[aria-current="true"]{color:var(--accent-ink); background:var(--accent)}
+.rail button svg{width:19px;height:19px}
+
+.brand{display:flex;align-items:center;gap:9px;margin-right:6px}
+.brand .tile{width:24px;height:24px;flex:0 0 auto}
+.brand b{font-size:14px;letter-spacing:.12em}
+.ws{margin-left:auto;display:flex;align-items:center;gap:8px}
+.ws select{background:var(--raise);color:var(--text);border:1px solid var(--line);
+  border-radius:var(--r-sm); padding:7px 9px; font:inherit; font-size:13px}
+.iconbtn{width:38px;height:38px;display:grid;place-items:center;border-radius:var(--r);
+  border:1px solid var(--line); color:var(--muted); background:var(--raise)}
+.iconbtn:hover{color:var(--text)}
+.iconbtn svg{width:17px;height:17px}
+
+/* ---- panels -------------------------------------------------------------- */
+.view{display:none; padding:var(--sp); max-width:1180px; margin:0 auto}
+.view[data-active]{display:block}
+.view h1{font-size:20px;margin:0 0 2px;letter-spacing:-.01em}
+.view .sub{color:var(--muted);font-size:13px;margin:0 0 var(--sp)}
+.grid2{display:grid;gap:var(--gap);grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);align-items:start}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden}
+.card > header{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;
+  align-items:center;gap:10px;font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.card .body{padding:14px}
+
+/* record head */
+.record{display:flex;gap:14px;align-items:center;padding:16px}
+.avatar{width:48px;height:48px;border-radius:12px;background:var(--accent);color:var(--accent-ink);
+  display:grid;place-items:center;font-weight:650;font-size:17px;flex:0 0 auto}
+.record .who b{display:block;font-size:17px;letter-spacing:-.01em}
+.record .who span{color:var(--muted);font-size:13px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:999px;
+  font-size:11.5px;border:1px solid var(--line);color:var(--muted);background:var(--raise)}
+.chip.ok{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 40%,transparent)}
+.chip.warn{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+.chip.bad{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 40%,transparent)}
+.pill{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+
+/* field rows */
+.fields{display:grid;grid-template-columns:1fr;gap:0}
+.frow{display:grid;grid-template-columns:132px minmax(0,1fr) auto auto;gap:10px 14px;
+  align-items:center;padding:12px 14px;border-top:1px solid var(--line);min-height:54px;
+  transition:background var(--fast)}
+.frow:first-child{border-top:0}
+.frow:hover{background:var(--raise)}
+.frow .k{color:var(--muted);font-size:12px;letter-spacing:.01em;text-transform:capitalize}
+.frow .v{font-size:14.5px;overflow-wrap:anywhere;min-width:0}
+.frow .src{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap}
+.frow[data-conflict]{background:color-mix(in srgb,var(--accent) 6%,transparent)}
+.frow[data-conflict] .v{color:var(--accent)}
+.frow[data-conflict] .src{color:var(--accent);opacity:.85}
+button.rowaction{min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--accent);
+  color:var(--accent);background:transparent;font-size:12px;font-weight:600;white-space:nowrap}
+button.rowaction:hover{background:var(--accent);color:var(--accent-ink)}
+.frow:not([data-conflict]) .rowaction{display:none}
+
+/* timeline */
+.tl{list-style:none;margin:0;padding:0}
+.tl li{position:relative;padding:0 0 16px 22px;border-left:1px solid var(--line);margin-left:6px}
+.tl li:last-child{padding-bottom:0;border-left-color:transparent}
+.tl li::before{content:"";position:absolute;left:-5px;top:4px;width:9px;height:9px;border-radius:50%;
+  background:var(--teal);box-shadow:0 0 0 3px var(--surface)}
+.tl time{display:block;color:var(--muted);font-size:11.5px;font-family:var(--mono)}
+.tl p{margin:2px 0 0;font-size:13.5px}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;
+  padding:0 16px;border-radius:var(--r);border:1px solid var(--line);background:var(--raise);
+  color:var(--text);font-size:13.5px;transition:transform var(--fast), border-color var(--fast)}
+.btn:hover{border-color:var(--accent)}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.btn.ghost{background:transparent}
+.btn.small{min-height:38px;padding:0 12px;font-size:12.5px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.spread{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+
+/* conflict cards, ledger rows, seats */
+.item{border:1px solid var(--line);border-radius:var(--r);padding:12px;margin-bottom:10px;background:var(--surface)}
+.item .top{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px}
+.item .val{font-family:var(--mono);font-size:12.5px;padding:3px 7px;border-radius:var(--r-sm);
+  background:var(--raise);border:1px solid var(--line);display:inline-block;overflow-wrap:anywhere}
+.mono{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.ledger{width:100%;border-collapse:collapse;font-size:12.5px}
+.ledger th{text-align:left;color:var(--muted);font-weight:500;padding:8px 10px;border-bottom:1px solid var(--line);
+  font-size:11px;letter-spacing:.05em;text-transform:uppercase;position:sticky;top:0;background:var(--surface)}
+.ledger td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+.ledger tr[data-bad] td{background:color-mix(in srgb,var(--danger) 12%,transparent)}
+.hash{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+
+.seat{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:12px;
+  border:1px solid var(--line);border-radius:var(--r);margin-bottom:10px}
+.seat .occ{font-size:12.5px;color:var(--muted)}
+.bar-track{height:6px;border-radius:99px;background:var(--raise);overflow:hidden;margin-top:8px}
+.bar-fill{height:100%;background:var(--accent)}
+.breakdown{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:8px;white-space:pre-wrap}
+
+/* settings */
+.setting{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:14px 0;
+  border-top:1px solid var(--line)}
+.setting:first-child{border-top:0}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.seg button{min-height:40px;padding:0 14px;font-size:12.5px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);font-weight:600}
+.note{color:var(--muted);font-size:12.5px;line-height:1.6}
+a{color:var(--accent)}
+
+/* toast */
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(74px + env(safe-area-inset-bottom));
+  background:var(--raise);border:1px solid var(--line);border-radius:999px;padding:10px 16px;font-size:13px;
+  opacity:0;pointer-events:none;transition:opacity var(--base);z-index:60;max-width:92vw}
+#toast[data-show]{opacity:1}
+
+/* ---- small screens ------------------------------------------------------- */
+@media (max-width:860px){
+  .app{grid-template-columns:1fr; grid-template-rows:54px 1fr 62px;
+    grid-template-areas:"bar" "main" "tabs"}
+  .rail{display:none}
+  .tabs{grid-area:tabs; display:flex; border-top:1px solid var(--line); background:var(--surface);
+    padding-bottom:env(safe-area-inset-bottom)}
+  .tabs button{flex:1;display:grid;place-items:center;gap:2px;color:var(--muted);min-height:56px}
+  .tabs button span{font-size:10px}
+  .tabs button svg{width:20px;height:20px}
+  .tabs button[aria-current="true"]{color:var(--accent)}
+  .grid2{grid-template-columns:1fr}
+  .view{padding:12px}
+  .frow{grid-template-columns:minmax(0,1fr) auto;
+    grid-template-areas:"k k" "v a" "s s";gap:3px 10px;padding:12px 14px}
+  .frow .k{grid-area:k;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em}
+  .frow .v{grid-area:v}
+  .frow .src{grid-area:s;white-space:normal;font-size:10.5px}
+  .frow .rowaction{grid-area:a}
+  .brand b{display:none}
+  .ws select{max-width:110px}
+  .record{padding:14px}
+  .record .who b{font-size:15.5px}
+  .ledger th:nth-child(3),.ledger td:nth-child(3){display:none}
+}
+@media (max-width:420px){
+  .pill{width:100%;margin-left:0}
+  .record{flex-wrap:wrap}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none !important; animation:none !important}
+}
 </style>
 </head>
 <body>
+<div class="app">
 
-<nav>
-  <div class="wrap">
-    <span class="brand">
-      <svg viewBox="0 0 24 24" aria-hidden="true">
+  <aside class="rail" aria-label="Sections">
+    <button data-go="unified" aria-current="true" title="Unified view">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
+      <span>Unified</span></button>
+    <button data-go="conflicts" title="Conflicts">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.01"/></svg>
+      <span>Resolve</span></button>
+    <button data-go="ledger" title="Ledger">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><rect x="4" y="4" width="16" height="7"/><rect x="4" y="13" width="16" height="7"/></svg>
+      <span>Ledger</span></button>
+    <button data-go="workforce" title="Workforce">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><rect x="5" y="3" width="14" height="12"/><path d="M5 15v6M19 15v6"/></svg>
+      <span>Workforce</span></button>
+    <button data-go="automations" title="Automations">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M3 12h4l3 7 4-14 3 7h4"/></svg>
+      <span>Automate</span></button>
+    <button data-go="settings" title="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/></svg>
+      <span>Settings</span></button>
+  </aside>
+
+  <header class="bar">
+    <div class="brand">
+      <svg class="tile" viewBox="0 0 24 24" aria-hidden="true">
         <rect x="1" y="1" width="10" height="10" rx="2.4" fill="#d9a441"/>
         <rect x="13" y="1" width="10" height="10" rx="2.4" fill="#5fb3ac" opacity=".85"/>
         <rect x="1" y="13" width="10" height="10" rx="2.4" fill="#5fb3ac" opacity=".55"/>
         <rect x="13" y="13" width="10" height="10" rx="2.4" fill="#d9a441" opacity=".55"/>
       </svg>
-      TESSERA
-    </span>
-    <span class="links">
-      <a href="#what">What it does</a>
-      <a href="#proof">Proof</a>
-      <a href="#honest">Limits</a>
-      <a href="https://github.com/drsamonline/tessera">Engine</a>
-    </span>
-    <a class="cta" href="app/">Open the console</a>
-  </div>
-</nav>
+      <b>TESSERA</b>
+    </div>
+    <div class="ws">
+      <label class="sr" for="ws">Workspace</label>
+      <select id="ws"><option>Acme</option><option>Northwind</option></select>
+      <button class="iconbtn" id="theme" title="Switch theme" aria-label="Switch theme">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg>
+      </button>
+    </div>
+  </header>
 
-<header class="hero">
-  <div class="wrap">
-    <span class="eyebrow"><span class="dot"></span> Runs offline · no server · no account</span>
-    <h1>One customer. Four systems. <em>One record you can prove.</em></h1>
-    <p class="lede">
-      Your CRM, helpdesk, ERP and inbox each hold a slice of the same customer, and they disagree.
-      TESSERA merges them field by field, shows where every value came from, and records the
-      whole thing in a hash chain you can verify in your own browser.
-    </p>
-    <div class="actions">
-      <a class="cta" href="app/">Open the console</a>
-      <a class="cta ghost" href="https://github.com/drsamonline/tessera">Read the specification</a>
-    </div>
-    <div class="meta">
-      <span><span class="dot"></span> Works offline after first load</span>
-      <span>Installable as an app</span>
-      <span>Zero dependencies</span>
-      <span>PolyForm Noncommercial</span>
-    </div>
+  <main class="main" id="main">
 
-    <div class="shot">
-      <div class="chrome"><i></i><i></i><i></i></div>
-      <img src="assets/shot-desktop.png" alt="The TESSERA console showing one customer record with a provenance note on every field and three conflicts flagged for resolution." width="1440" height="900">
-    </div>
-  </div>
-</header>
+    <!-- UNIFIED ---------------------------------------------------------- -->
+    <section class="view" id="unified" data-active>
+      <h1>Asha Rao</h1>
+      <p class="sub">One customer, four systems, one record. Every field says where it came from.</p>
 
-<section id="what">
-  <div class="wrap">
-    <h2>What it actually does</h2>
-    <p class="sub">Not a dashboard over a spreadsheet. Every screen is a decision you can act on, and every action is recorded.</p>
-    <div class="cols">
-      <div class="card">
-        <span class="tag">01 · merge</span>
-        <h3>Field-level, not record-level</h3>
-        <p>Email comes from HubSpot because it owns it. The deal amount comes from NetSuite because it owns
-          that. A field nobody owns falls back to trust, then to you.</p>
-      </div>
-      <div class="card">
-        <span class="tag">02 · resolve</span>
-        <h3>The rule is shown before the answer</h3>
-        <p>Every disagreement names the rule that decides it — authority map, trust score, or human review —
-          so you are approving a mechanism, not guessing at one.</p>
-      </div>
-      <div class="card">
-        <span class="tag">03 · prove</span>
-        <h3>The ledger verifies in your browser</h3>
-        <p>Each event is SHA-256 hashed against the one before it. Press verify and the page recomputes the
-          chain locally. Alter one event and it fails at that sequence number.</p>
-      </div>
-      <div class="card">
-        <span class="tag">04 · route</span>
-        <h3>Work goes to a position</h3>
-        <p>Tasks are assigned to seats, not people. A human or an agent fills the seat, and the router shows
-          its term-by-term arithmetic for why it picked the one it did.</p>
-      </div>
-      <div class="card">
-        <span class="tag">05 · approve</span>
-        <h3>Agent playbooks are proposals</h3>
-        <p>A workflow authored by an agent cannot run until a person approves it. The button says
-          <em>Approve first</em> and it is disabled, because that is what the rule is.</p>
-      </div>
-      <div class="card">
-        <span class="tag">06 · offline</span>
-        <h3>Nothing leaves the device</h3>
-        <p>No network calls after first load. State lives in localStorage, the service worker caches the
-          shell, and the ledger is rebuilt locally if you clear it.</p>
-      </div>
-    </div>
-  </div>
-</section>
+      <div class="grid2">
+        <div class="card">
+          <div class="record">
+            <div class="avatar" aria-hidden="true">AR</div>
+            <div class="who">
+              <b>Asha Rao</b>
+              <span>Director of Operations · Acme Industrial</span>
+            </div>
+            <div class="pill">
+              <span class="chip ok">Relationship health 82</span>
+              <span class="chip warn" id="conflictCount">2 conflicts</span>
+            </div>
+          </div>
+          <div class="fields" id="fields"></div>
+        </div>
 
-<section id="proof">
-  <div class="wrap">
-    <h2>Three screens, no marketing</h2>
-    <p class="sub">These are screenshots of the running app, not mockups. The data is a seeded demo; the logic is the engine's.</p>
-    <div class="two">
-      <figure>
-        <img src="assets/shot-conflicts.png" alt="The Resolve screen listing two disagreeing systems for a field, each with a Keep this button and the rule the engine would apply." width="1440" height="900">
-        <figcaption><b>Resolve.</b> Both values, both trust scores, and the rule that would win.</figcaption>
-      </figure>
-      <figure>
-        <img src="assets/shot-ledger.png" alt="The Ledger screen listing hash-chained events with a verify button and a tamper button." width="1440" height="900">
-        <figcaption><b>Ledger.</b> Verify recomputes SHA-256 in the page. Tamper proves the verification works.</figcaption>
-      </figure>
-    </div>
-    <div class="two" style="margin-top:18px">
-      <figure class="mobile">
-        <img src="assets/shot-mobile.png" alt="The console on a phone: a single column record with a bottom tab bar." width="390" height="844">
-        <figcaption><b>Phone.</b> Same app, one column, bottom tabs, 44px targets.</figcaption>
-      </figure>
-      <div class="card">
-        <h3>Built to be used, not scrolled</h3>
-        <p style="margin-bottom:14px">A left rail on a laptop becomes a bottom bar on a phone. Rows collapse
-          to label, value, provenance. Nothing is hidden behind a hamburger.</p>
-        <table>
-          <tr><th>Property</th><th>Value</th></tr>
-          <tr><td>Contrast</td><td><b>≥ 4.5:1</b> on every text pair, measured</td></tr>
-          <tr><td>Touch targets</td><td><b>44px</b> minimum</td></tr>
-          <tr><td>Keyboard</td><td><b>1–6</b> switch sections, <b>T</b> toggles theme</td></tr>
-          <tr><td>Dependencies</td><td><b>none</b> — no framework, no build step</td></tr>
-          <tr><td>Payload</td><td><b>one HTML file</b> plus a service worker</td></tr>
-        </table>
+        <div class="card">
+          <header>Activity</header>
+          <div class="body">
+            <ul class="tl" id="timeline"></ul>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-</section>
+    </section>
 
-<section id="honest">
-  <div class="wrap">
-    <h2>What this is not</h2>
-    <p class="sub">The same honesty the engine repository runs on.</p>
-    <div class="cols">
+    <!-- CONFLICTS -------------------------------------------------------- -->
+    <section class="view" id="conflicts">
+      <h1>Resolve</h1>
+      <p class="sub">Where two systems disagree, the rule that decides is shown before you choose.</p>
+      <div id="conflictList"></div>
+    </section>
+
+    <!-- LEDGER ----------------------------------------------------------- -->
+    <section class="view" id="ledger">
+      <h1>Ledger</h1>
+      <p class="sub">Every action, hash-chained. Verification runs here, in your browser.</p>
       <div class="card">
-        <h3>Not connected to your systems</h3>
-        <p>This console runs on seeded data. The real connectors exist in the engine and have never touched a
-          live tenant — that gap is documented, not glossed.</p>
+        <header>
+          <span>Chain</span>
+          <span class="chip ok" id="chainState">not verified</span>
+          <span style="margin-left:auto" class="row">
+            <button class="btn small" id="verify">Verify chain</button>
+            <button class="btn small ghost" id="tamper">Tamper with one event</button>
+            <button class="btn small ghost" id="reset">Reset demo</button>
+          </span>
+        </header>
+        <div class="body" style="padding:0;overflow:auto;max-height:62vh">
+          <table class="ledger">
+            <thead><tr><th>#</th><th>Action</th><th>Actor</th><th>Hash</th></tr></thead>
+            <tbody id="ledgerRows"></tbody>
+          </table>
+        </div>
       </div>
+    </section>
+
+    <!-- WORKFORCE -------------------------------------------------------- -->
+    <section class="view" id="workforce">
+      <h1>Workforce</h1>
+      <p class="sub">Work is assigned to a position, never to a person. A human or an agent fills it.</p>
+      <div class="grid2">
+        <div class="card">
+          <header>Positions</header>
+          <div class="body" id="seats"></div>
+        </div>
+        <div class="card">
+          <header>Routing</header>
+          <div class="body">
+            <p class="note" id="routingNote">A task is waiting. The router scores every occupant of the position.</p>
+            <div id="routing"></div>
+            <div class="row" style="margin-top:12px">
+              <button class="btn primary" id="assign">Assign task</button>
+              <button class="btn" id="escalate">Escalate</button>
+            </div>
+            <div id="packet" class="breakdown"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- AUTOMATIONS ------------------------------------------------------ -->
+    <section class="view" id="automations">
+      <h1>Automate</h1>
+      <p class="sub">A playbook written by an agent is a proposal until a person approves it.</p>
+      <div id="workflows"></div>
+    </section>
+
+    <!-- SETTINGS --------------------------------------------------------- -->
+    <section class="view" id="settings">
+      <h1>Settings</h1>
+      <p class="sub">Preferences are stored on this device. Nothing leaves the browser.</p>
       <div class="card">
-        <h3>Not a backend</h3>
-        <p>There is no server, no database and no auth here. It is a demonstration of the logic, installable
-          and offline, so you can judge the behaviour before reading the specification.</p>
+        <header>Appearance</header>
+        <div class="body">
+          <div class="setting">
+            <div><b>Theme</b><div class="note">Both themes are measured for WCAG AA contrast.</div></div>
+            <div class="seg" id="themeSeg">
+              <button data-theme-set="dark" aria-pressed="true">Dark</button>
+              <button data-theme-set="light" aria-pressed="false">Light</button>
+            </div>
+          </div>
+          <div class="setting">
+            <div><b>Density</b><div class="note">Compact fits more rows; comfortable is the default.</div></div>
+            <div class="seg" id="densitySeg">
+              <button data-density-set="comfortable" aria-pressed="true">Comfortable</button>
+              <button data-density-set="compact" aria-pressed="false">Compact</button>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="card">
-        <h3>Not audited</h3>
-        <p>The hashing is Web Crypto. The key handling in the engine is a reference construction and says so.
-          Nothing here should hold real customer data.</p>
+      <div class="card" style="margin-top:12px">
+        <header>About</header>
+        <div class="body">
+          <p class="note">
+            <b>TESSERA console</b> is a working demonstration of the reference core at
+            <a href="https://github.com/drsamonline/tessera">drsamonline/tessera</a>: field-level merge,
+            conflict resolution, a hash-chained ledger, seat-based routing and the proposal gate - all
+            reimplemented in the browser, with no server and no network.
+          </p>
+          <p class="note">
+            Built by <b>Dr Sohil Momin</b>. Licensed under PolyForm Noncommercial 1.0.0.
+            If it saved you an afternoon, <a href="https://ko-fi.com/matneo">buy the author a coffee</a>.
+          </p>
+          <p class="note" id="storageNote"></p>
+        </div>
       </div>
-    </div>
-  </div>
-</section>
+    </section>
+  </main>
 
-<section>
-  <div class="wrap">
-    <h2>Run it</h2>
-    <p class="sub">Three ways, none of which need a build step.</p>
-    <pre><code># 1. in place
-open app/index.html
+  <nav class="tabs" aria-label="Sections">
+    <button data-go="unified" aria-current="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg><span>Unified</span></button>
+    <button data-go="conflicts">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.01"/></svg><span>Resolve</span></button>
+    <button data-go="ledger">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><rect x="4" y="4" width="16" height="7"/><rect x="4" y="13" width="16" height="7"/></svg><span>Ledger</span></button>
+    <button data-go="workforce">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><rect x="5" y="3" width="14" height="12"/><path d="M5 15v6M19 15v6"/></svg><span>Work</span></button>
+    <button data-go="automations">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M3 12h4l3 7 4-14 3 7h4"/></svg><span>Automate</span></button>
+    <button data-go="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/></svg><span>Settings</span></button>
+  </nav>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
 
-# 2. any static server
-python3 -m http.server 8000     # then /app/
+<script>
+/* ==========================================================================
+   TESSERA console - the reference core, in the browser.
+   No dependencies, no network, no build step. State lives in localStorage.
+   ========================================================================== */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 
-# 3. install it
-# open /app/ in Chrome or Edge, then "Install TESSERA" from the address bar</code></pre>
-    <p class="sub" style="margin-top:22px">
-      For a desktop binary, wrap the folder with Tauri or Electron — the app is a static page, so either takes
-      minutes. For Android, a Trusted Web Activity over the hosted URL gives a real APK from the same files.
-      Both paths are written up in <a href="https://github.com/drsamonline/tessera-app/blob/main/BUILDING.md">BUILDING.md</a>.
-    </p>
-  </div>
-</section>
+/* ---- deterministic hashing (Web Crypto) --------------------------------- */
+async function sha256(text) {
+  const bytes = new TextEncoder().encode(text);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+function canonicalJSON(value) {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return "[" + value.map(canonicalJSON).join(",") + "]";
+  return "{" + Object.keys(value).sort().map(k => JSON.stringify(k) + ":" + canonicalJSON(value[k])).join(",") + "}";
+}
 
-<footer>
-  <div class="wrap">
-    <div>
-      <b>TESSERA</b><br>
-      A console for the TESSERA reference core.<br>
-      Built by <b>Dr Sohil Momin</b>.
-    </div>
-    <div>
-      <b>Licence</b><br>
-      PolyForm Noncommercial 1.0.0.<br>
-      Commercial use needs a licence — see the
-      <a href="https://github.com/drsamonline/tessera-app/blob/main/LICENSE">LICENSE</a>.
-    </div>
-    <div>
-      <b>Support the work</b><br>
-      <a href="https://ko-fi.com/matneo">ko-fi.com/matneo</a><br>
-      <a href="https://github.com/sponsors/drsamonline">GitHub Sponsors</a>
-    </div>
-    <div>
-      <b>Built on</b><br>
-      <a href="https://github.com/drsamonline/tessera">drsamonline/tessera</a> —
-      the specification and reference core.<br>
-      <a href="https://github.com/drsamonline/tessera-app">Source for this page</a>
-    </div>
-  </div>
-</footer>
+/* ---- seed data: two systems that disagree ------------------------------- */
+const NODES = {
+  hubspot: { id: "hubspot", label: "HubSpot", kind: "sales", trust: 0.82, authority: { email: "authority", stage: "authority" } },
+  zendesk: { id: "zendesk", label: "Zendesk", kind: "support", trust: 0.61, authority: {} },
+  netsuite:{ id: "netsuite", label: "NetSuite", kind: "erp", trust: 0.74, authority: { amount_minor: "authority" } },
+  native:  { id: "native", label: "Tessera", kind: "native", trust: 0.90, authority: {} },
+};
+
+const RECORD = {
+  "full_name":   { hubspot: "Asha Rao", zendesk: "Asha R Rao", netsuite: "Asha Rao" },
+  "email":       { hubspot: "asha@acme.example", zendesk: "asha.rao@acme.example" },
+  "phone":       { hubspot: "+91 90000 00001", netsuite: "+91 90000 00001" },
+  "company":     { hubspot: "Acme Industrial", netsuite: "Acme Industrial Pvt Ltd" },
+  "stage":       { hubspot: "proposal", native: "proposal" },
+  "amount_minor":{ netsuite: 4500000, hubspot: 4500000 },
+  "owner":       { native: "Priya Nair" },
+  "consent":     { hubspot: "granted", zendesk: "granted" },
+};
+
+const ACTIVITY = [
+  { at: "09:12", node: "hubspot", text: "Deal moved to proposal by Priya Nair" },
+  { at: "09:40", node: "zendesk", text: "Ticket #4821 opened: delivery address change" },
+  { at: "10:05", node: "native",  text: "Task assigned to position Support triage" },
+  { at: "10:22", node: "netsuite", text: "Invoice INV-2291 issued for ₹45,000" },
+  { at: "11:02", node: "zendesk", text: "Ticket #4821 resolved by agent" },
+];
+
+/* ---- conflict resolution, ported from conflict.py ----------------------- */
+const AUTHORITY_RANK = { authority: 3, delegate: 2, bidirectional: 1, mirror: 0 };
+
+function resolveField(field, candidates, authority) {
+  const entries = Object.entries(candidates).map(([node, value]) => ({ node, value }));
+  if (entries.length === 1) return { ...entries[0], rule: "single source" };
+
+  const owned = entries.filter(e => AUTHORITY_RANK[authority[e.node]] === 3);
+  if (owned.length === 1) return { ...owned[0], rule: "authority map" };
+  if (owned.length > 1) {
+    owned.sort((a, b) => NODES[b.node].trust - NODES[a.node].trust);
+    return { ...owned[0], rule: "authority, then trust" };
+  }
+  const distinct = new Set(entries.map(e => canonicalJSON(e.value)));
+  if (distinct.size === 1) return { ...entries[0], rule: "agreement" };
+
+  const ranked = [...entries].sort((a, b) => NODES[b.node].trust - NODES[a.node].trust);
+  if (NODES[ranked[0].node].trust > NODES[ranked[1].node].trust) {
+    return { ...ranked[0], rule: "trust score" };
+  }
+  return { ...ranked[0], rule: "trust, then node id", blocked: true };
+}
+
+/* ---- routing, ported from routing.py ------------------------------------ */
+const WEIGHTS = { capability_match: 0.30, authority_match: 0.15, sla_headroom: 0.15,
+                  trust_score: 0.15, utilization: 0.10, cost_efficiency: 0.10,
+                  data_freshness: 0.05, _penalty: 0.20 };
+
+function routeScore(terms) {
+  let total = 0;
+  const lines = [];
+  for (const [name, weight] of Object.entries(WEIGHTS)) {
+    if (name.startsWith("_")) continue;
+    const contribution = weight * terms[name];
+    total += contribution;
+    lines.push(`${name.padEnd(20)} ${terms[name].toFixed(2)} × ${weight.toFixed(2)} = ${contribution.toFixed(3)}`);
+  }
+  const penalty = WEIGHTS._penalty * terms.cross_boundary_penalty;
+  lines.push(`${"cross_boundary".padEnd(20)} ${terms.cross_boundary_penalty.toFixed(2)} × ${WEIGHTS._penalty.toFixed(2)} = -${penalty.toFixed(3)}`);
+  return { score: total - penalty, lines };
+}
+
+/* ---- state -------------------------------------------------------------- */
+const DEFAULT_STATE = {
+  resolved: {},          // field -> chosen node
+  ledger: null,          // [{seq, action, actor, payload, hash, prev}]
+  theme: "dark",
+  density: "comfortable",
+  assigned: null,
+  escalated: null,
+  workflowEnabled: { "w1": true, "w2": true },
+};
+let state = load();
+
+function load() {
+  try {
+    const raw = localStorage.getItem("tessera.console.v1");
+    if (!raw) return structuredClone(DEFAULT_STATE);
+    return Object.assign(structuredClone(DEFAULT_STATE), JSON.parse(raw));
+  } catch { return structuredClone(DEFAULT_STATE); }
+}
+function save() {
+  try { localStorage.setItem("tessera.console.v1", JSON.stringify(state)); } catch {}
+}
+
+/* ---- the ledger --------------------------------------------------------- */
+const SEED_EVENTS = [
+  { action: "contact.sync", actor: "system", payload: { node: "hubspot", field: "email", value: "asha@acme.example" } },
+  { action: "contact.sync", actor: "system", payload: { node: "zendesk", field: "email", value: "asha.rao@acme.example" } },
+  { action: "conflict.resolved", actor: "human", payload: { field: "email", rule: "authority map", winner: "hubspot" } },
+  { action: "task.assigned", actor: "system", payload: { seat: "Support triage", occupant: "priya" } },
+  { action: "deal.stage", actor: "human", payload: { from: "scoping", to: "proposal" } },
+];
+
+async function buildLedger() {
+  const events = [];
+  let prev = "0".repeat(64);
+  for (let i = 0; i < SEED_EVENTS.length; i++) {
+    const base = { seq: i + 1, ...SEED_EVENTS[i], prev };
+    const hash = await sha256(canonicalJSON(base));
+    events.push({ ...base, hash });
+    prev = hash;
+  }
+  return events;
+}
+
+async function ensureLedger() {
+  if (!state.ledger) { state.ledger = await buildLedger(); save(); }
+  return state.ledger;
+}
+
+async function appendEvent(action, actor, payload) {
+  const events = await ensureLedger();
+  const prev = events.length ? events[events.length - 1].hash : "0".repeat(64);
+  const base = { seq: events.length + 1, action, actor, payload, prev };
+  const hash = await sha256(canonicalJSON(base));
+  events.push({ ...base, hash });
+  state.ledger = events;
+  save();
+  renderLedger();
+}
+
+async function verifyChain() {
+  const events = await ensureLedger();
+  let prev = "0".repeat(64);
+  for (const event of events) {
+    const { hash, ...base } = event;
+    if (base.prev !== prev) return { ok: false, at: event.seq, why: "broken link" };
+    if (await sha256(canonicalJSON(base)) !== hash) return { ok: false, at: event.seq, why: "hash mismatch" };
+    prev = hash;
+  }
+  return { ok: true, count: events.length };
+}
+
+/* ---- rendering ---------------------------------------------------------- */
+function toast(message) {
+  const el = $("#toast");
+  el.textContent = message;
+  el.setAttribute("data-show", "");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => el.removeAttribute("data-show"), 2400);
+}
+
+function currentValue(field) {
+  const candidates = RECORD[field];
+  const resolution = resolveField(field, candidates, Object.fromEntries(
+    Object.entries(candidates).map(([node]) => [node, NODES[node].authority[field] || "bidirectional"])));
+  const chosen = state.resolved[field];
+  if (chosen && candidates[chosen] !== undefined) {
+    return { value: candidates[chosen], node: chosen, rule: "chosen by you" };
+  }
+  return { value: resolution.value, node: resolution.node, rule: resolution.rule };
+}
+
+function isConflict(field) {
+  const values = new Set(Object.values(RECORD[field]).map(v => canonicalJSON(v)));
+  return values.size > 1 && !state.resolved[field];
+}
+
+function formatValue(field, value) {
+  if (field === "amount_minor") return "₹" + (value / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 });
+  return String(value);
+}
+
+function renderFields() {
+  const host = $("#fields");
+  host.innerHTML = "";
+  for (const field of Object.keys(RECORD)) {
+    const { value, node, rule } = currentValue(field);
+    const row = document.createElement("div");
+    row.className = "frow";
+    if (isConflict(field)) row.dataset.conflict = "1";
+    const label = field === "amount_minor" ? "Deal amount" : field.replace(/_/g, " ");
+    row.innerHTML = `
+      <div class="k">${label}</div>
+      <div class="v">${formatValue(field, value)}</div>
+      <div class="src">${NODES[node].label} · ${rule}</div>`;
+    if (isConflict(field)) {
+      const btn = document.createElement("button");
+      btn.className = "rowaction";
+      btn.textContent = "Resolve";
+      btn.onclick = () => go("conflicts");
+      row.appendChild(btn);
+    }
+    host.appendChild(row);
+  }
+  const count = Object.keys(RECORD).filter(isConflict).length;
+  const chip = $("#conflictCount");
+  chip.textContent = count === 1 ? "1 conflict" : `${count} conflicts`;
+  chip.className = count ? "chip warn" : "chip ok";
+}
+
+function renderTimeline() {
+  const host = $("#timeline");
+  host.innerHTML = ACTIVITY.map(item => `
+    <li><time>${item.at} · ${NODES[item.node].label}</time><p>${item.text}</p></li>`).join("");
+}
+
+function renderConflicts() {
+  const host = $("#conflictList");
+  const fields = Object.keys(RECORD).filter(isConflict);
+  if (!fields.length) {
+    host.innerHTML = `<div class="card"><div class="body"><p class="note">
+      Nothing to resolve. Every field agrees, or you have already chosen.</p></div></div>`;
+    return;
+  }
+  host.innerHTML = fields.map(field => {
+    const entries = Object.entries(RECORD[field]);
+    const authority = Object.fromEntries(entries.map(([node]) =>
+      [node, NODES[node].authority[field] || "bidirectional"]));
+    const resolution = resolveField(field, RECORD[field], authority);
+    return `<div class="item">
+      <div class="top">
+        <b>${field.replace(/_/g, " ")}</b>
+        <span class="chip">rule: ${resolution.rule}</span>
+      </div>
+      ${entries.map(([node, value]) => `
+        <div class="row" style="margin:6px 0">
+          <span class="val">${formatValue(field, value)}</span>
+          <span class="mono">${NODES[node].label} · trust ${NODES[node].trust.toFixed(2)}</span>
+          <button class="btn small" data-pick="${field}|${node}">Keep this</button>
+        </div>`).join("")}
+      <div class="note">The engine would take <b>${NODES[resolution.node].label}</b> by ${resolution.rule}.</div>
+    </div>`;
+  }).join("");
+  $$("[data-pick]", host).forEach(btn => {
+    btn.onclick = async () => {
+      const [field, node] = btn.dataset.pick.split("|");
+      state.resolved[field] = node;
+      save();
+      await appendEvent("conflict.resolved", "human", { field, winner: node });
+      renderAll();
+      toast(`Kept ${NODES[node].label}'s value for ${field.replace(/_/g, " ")}`);
+    };
+  });
+}
+
+function renderLedger() {
+  const host = $("#ledgerRows");
+  if (!state.ledger) { host.innerHTML = ""; return; }
+  host.innerHTML = state.ledger.map(event => `
+    <tr data-seq="${event.seq}">
+      <td class="mono">${event.seq}</td>
+      <td>${event.action}</td>
+      <td class="mono">${event.actor}</td>
+      <td class="hash">${event.hash.slice(0, 12)}…</td>
+    </tr>`).join("");
+}
+
+const SEATS = [
+  { id: "triage", name: "Support triage", occupant: "priya", kind: "human", trust: 0.9, load: 0.4, capability: 1.0, cost: 0.9 },
+  { id: "agent", name: "First response", occupant: "agent-7", kind: "agent", trust: 0.78, load: 0.2, capability: 0.95, cost: 0.55 },
+  { id: "specialist", name: "Escalation", occupant: "sam", kind: "human", trust: 0.72, load: 0.7, capability: 0.6, cost: 0.5 },
+];
+
+function renderSeats() {
+  $("#seats").innerHTML = SEATS.map(seat => `
+    <div class="seat">
+      <div>
+        <b>${seat.name}</b>
+        <div class="occ">${seat.occupant} · ${seat.kind} · trust ${seat.trust.toFixed(2)}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${seat.load * 100}%"></div></div>
+      </div>
+      <span class="chip ${seat.kind === "agent" ? "warn" : "ok"}">${seat.kind}</span>
+    </div>`).join("");
+}
+
+function renderRouting() {
+  const host = $("#routing");
+  const rows = SEATS.map(seat => {
+    const terms = {
+      capability_match: seat.capability,
+      authority_match: 1.0,
+      sla_headroom: 1 - seat.load,
+      trust_score: seat.trust,
+      utilization: 1 - seat.load,
+      cost_efficiency: seat.cost,
+      data_freshness: 0.9,
+      cross_boundary_penalty: seat.kind === "agent" ? 0.2 : 0.0,
+    };
+    return { seat, ...routeScore(terms) };
+  }).sort((a, b) => b.score - a.score);
+
+  host.innerHTML = rows.map((row, index) => `
+    <div class="item">
+      <div class="top">
+        <b>${index + 1}. ${row.seat.name}</b>
+        <span class="chip ${index === 0 ? "ok" : ""}">${row.score.toFixed(3)}</span>
+      </div>
+      <div class="mono">${row.seat.occupant} · ${row.seat.kind}</div>
+      ${index === 0 ? `<div class="breakdown">${row.lines.join("\n")}</div>` : ""}
+    </div>`).join("");
+
+  if (state.assigned) {
+    $("#routingNote").textContent = `Assigned to ${state.assigned}. Escalation carries a signed packet.`;
+  }
+}
+
+const WORKFLOWS = [
+  { id: "w1", name: "Escalate a stale deal", author: "agent", condition: "amount_minor > 100000 and stage == 'proposal'",
+    actions: ["assign_to_seat: Escalation", "send_notification: owner"], approved: true },
+  { id: "w2", name: "Welcome a new contact", author: "agent", condition: "consent == 'granted'",
+    actions: ["create_task: Send welcome", "send_email: owner"], approved: false },
+];
+
+function evaluateCondition(text, record) {
+  const flat = Object.fromEntries(Object.entries(record).map(([k, v]) => [k, currentValue(k).value]));
+  return text.split(" and ").every(part => {
+    const match = part.match(/^(\w+)\s*(==|!=|>|<)\s*'?([^']*)'?$/);
+    if (!match) return false;
+    const [, field, op, raw] = match;
+    const left = flat[field];
+    const right = isNaN(Number(raw)) ? raw : Number(raw);
+    if (op === "==") return String(left) === String(right);
+    if (op === "!=") return String(left) !== String(right);
+    if (op === ">") return Number(left) > Number(right);
+    if (op === "<") return Number(left) < Number(right);
+    return false;
+  });
+}
+
+function renderWorkflows() {
+  $("#workflows").innerHTML = WORKFLOWS.map(flow => {
+    const fires = evaluateCondition(flow.condition, RECORD);
+    const enabled = state.workflowEnabled[flow.id] !== false;
+    return `<div class="item">
+      <div class="top">
+        <b>${flow.name}</b>
+        <span class="chip ${flow.approved ? "ok" : "warn"}">${flow.approved ? "approved" : "proposal — not executable"}</span>
+      </div>
+      <div class="mono">when ${flow.condition}</div>
+      <div class="row" style="margin-top:10px">
+        ${flow.actions.map(a => `<span class="chip">${a}</span>`).join("")}
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn small ${flow.approved ? "primary" : ""}" data-run="${flow.id}" ${flow.approved ? "" : "disabled"}>
+          ${flow.approved ? "Fire event" : "Approve first"}</button>
+        <button class="btn small ghost" data-toggle="${flow.id}">${enabled ? "Disable" : "Enable"}</button>
+        <span class="mono">condition ${fires ? "matches this record" : "does not match"}</span>
+      </div>
+    </div>`;
+  }).join("");
+
+  $$("[data-run]").forEach(btn => btn.onclick = async () => {
+    const flow = WORKFLOWS.find(f => f.id === btn.dataset.run);
+    if (!evaluateCondition(flow.condition, RECORD)) { toast("Condition does not match this record"); return; }
+    await appendEvent("workflow.fired", "system", { workflow: flow.id, actions: flow.actions.length });
+    toast(`${flow.name}: ${flow.actions.length} actions ran`);
+  });
+  $$("[data-toggle]").forEach(btn => btn.onclick = () => {
+    const id = btn.dataset.toggle;
+    state.workflowEnabled[id] = state.workflowEnabled[id] === false;
+    save(); renderWorkflows();
+  });
+}
+
+function renderAll() {
+  renderFields(); renderTimeline(); renderConflicts(); renderLedger(); renderSeats();
+  renderRouting(); renderWorkflows();
+  $("#storageNote").textContent =
+    "Preferences and the demo ledger are stored in this browser only (localStorage). Clearing site data resets them.";
+}
+
+/* ---- navigation --------------------------------------------------------- */
+function go(view) {
+  $$(".view").forEach(section => section.toggleAttribute("data-active", section.id === view));
+  $$("[data-go]").forEach(button => button.setAttribute("aria-current", String(button.dataset.go === view)));
+  $("#main").scrollTop = 0;
+  if (location.hash !== "#" + view) history.replaceState(null, "", "#" + view);
+}
+
+$$("[data-go]").forEach(button => button.onclick = () => go(button.dataset.go));
+
+/* ---- settings ----------------------------------------------------------- */
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  state.theme = theme; save();
+  $$("[data-theme-set]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.themeSet === theme)));
+}
+function applyDensity(density) {
+  document.documentElement.dataset.density = density;
+  state.density = density; save();
+  $$("[data-density-set]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.densitySet === density)));
+}
+$$("[data-theme-set]").forEach(b => b.onclick = () => applyTheme(b.dataset.themeSet));
+$$("[data-density-set]").forEach(b => b.onclick = () => applyDensity(b.dataset.densitySet));
+$("#theme").onclick = () => applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+
+/* ---- ledger actions ----------------------------------------------------- */
+$("#verify").onclick = async () => {
+  const result = await verifyChain();
+  const chip = $("#chainState");
+  if (result.ok) {
+    chip.textContent = `verified · ${result.count} events`;
+    chip.className = "chip ok";
+    toast("Chain verified in your browser");
+  } else {
+    chip.textContent = `broken at #${result.at}`;
+    chip.className = "chip bad";
+    $$(`#ledgerRows tr[data-seq="${result.at}"]`).forEach(row => row.dataset.bad = "1");
+    toast(`Verification failed at event ${result.at}: ${result.why}`);
+  }
+};
+$("#tamper").onclick = async () => {
+  const events = await ensureLedger();
+  if (!events.length) return;
+  const index = Math.min(2, events.length - 1);
+  events[index].payload = { ...events[index].payload, value: "tampered@acme.example" };
+  save(); renderLedger();
+  $("#chainState").textContent = "not verified";
+  $("#chainState").className = "chip";
+  toast(`Event ${events[index].seq} was altered. Run verify to see it fail.`);
+};
+$("#reset").onclick = async () => {
+  localStorage.removeItem("tessera.console.v1");
+  state = load();
+  state.ledger = null;
+  await ensureLedger();
+  applyTheme(state.theme); applyDensity(state.density);
+  renderAll();
+  toast("Demo reset");
+};
+
+/* ---- workforce actions -------------------------------------------------- */
+$("#assign").onclick = async () => {
+  const best = SEATS.map(seat => ({ seat, ...routeScore({
+    capability_match: seat.capability, authority_match: 1, sla_headroom: 1 - seat.load,
+    trust_score: seat.trust, utilization: 1 - seat.load, cost_efficiency: seat.cost,
+    data_freshness: 0.9, cross_boundary_penalty: seat.kind === "agent" ? 0.2 : 0,
+  }) })).sort((a, b) => b.score - a.score)[0];
+  state.assigned = best.seat.name;
+  save(); renderRouting();
+  await appendEvent("task.assigned", "system", { seat: best.seat.name, occupant: best.seat.occupant });
+  toast(`Assigned to ${best.seat.name}`);
+};
+$("#escalate").onclick = async () => {
+  if (!state.assigned) { toast("Assign the task first"); return; }
+  const packet = {
+    task: "Delivery address change",
+    from: state.assigned,
+    to: "Escalation",
+    state: Object.fromEntries(Object.keys(RECORD).map(f => [f, currentValue(f).value])),
+    issued: new Date().toISOString(),
+  };
+  const signature = (await sha256(canonicalJSON(packet))).slice(0, 32);
+  $("#packet").textContent =
+    `handoff packet\n  ${Object.entries(packet).filter(([k]) => k !== "state").map(([k, v]) => `${k.padEnd(8)} ${v}`).join("\n  ")}\n` +
+    `  fields   ${Object.keys(packet.state).length}\n  sig      ${signature}…\n` +
+    `the receiver needs nothing but this packet`;
+  state.escalated = signature;
+  save();
+  await appendEvent("task.escalated", "system", { to: "Escalation", signature: signature.slice(0, 12) });
+  toast("Escalated with a signed packet");
+};
+
+/* ---- keyboard ----------------------------------------------------------- */
+document.addEventListener("keydown", event => {
+  if (event.metaKey || event.ctrlKey || event.altKey) return;
+  const order = ["unified", "conflicts", "ledger", "workforce", "automations", "settings"];
+  const index = Number(event.key);
+  if (index >= 1 && index <= order.length) { go(order[index - 1]); event.preventDefault(); }
+  if (event.key === "t") { $("#theme").click(); }
+});
+
+/* ---- boot --------------------------------------------------------------- */
+(async function boot() {
+  applyTheme(state.theme);
+  applyDensity(state.density);
+  await ensureLedger();
+  renderAll();
+  const hash = location.hash.replace("#", "");
+  if (hash) go(hash);
+  if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
+})();
+</script>
 </body>
 </html>

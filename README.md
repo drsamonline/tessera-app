@@ -10,7 +10,7 @@ A working, offline, installable console for the [TESSERA reference core](https:/
 field-level merge, conflict resolution, a hash-chained ledger, seat-based routing and the agent-proposal gate,
 all running in your browser with no server and no dependencies.
 
-<a href="https://drsamonline.github.io/tessera-app/app/"><img alt="Open the live app" src="https://img.shields.io/badge/▶%20open%20the%20console-live%20demo-d9a441?style=for-the-badge"></a>
+<a href="https://drsamonline.github.io/tessera-app/"><img alt="Open the live app" src="https://img.shields.io/badge/▶%20open%20the%20console-live%20demo-d9a441?style=for-the-badge"></a>
 
 <img alt="Status" src="https://img.shields.io/badge/status-working%20demo-1F3552">
 <img alt="Offline" src="https://img.shields.io/badge/offline-yes-3FB950">
@@ -19,8 +19,8 @@ all running in your browser with no server and no dependencies.
 <img alt="Licence" src="https://img.shields.io/badge/licence-PolyForm%20Noncommercial%201.0.0-8A6416">
 <img alt="Size" src="https://img.shields.io/badge/payload-one%20HTML%20file-1F3552">
 
-[**Open the console**](https://drsamonline.github.io/tessera-app/app/) ·
-[Landing page](https://drsamonline.github.io/tessera-app/) ·
+[**Open the console**](https://drsamonline.github.io/tessera-app/) ·
+[The console, live](https://drsamonline.github.io/tessera-app/) ·
 [The engine](https://github.com/drsamonline/tessera) ·
 [Enhancements](ENHANCEMENTS.md) ·
 [Building APK / EXE](BUILDING.md)
@@ -74,10 +74,10 @@ Everything on screen is the engine's logic, ported and running client-side:
 open app/index.html
 
 # or over any static server
-python3 -m http.server 8000        # then http://localhost:8000/app/
+python3 -m http.server 8000        # then http://localhost:8000/
 
 # or install it
-# open /app/ in Chrome or Edge → "Install TESSERA" in the address bar
+# open /the root in Chrome or Edge → "Install TESSERA" in the address bar
 ```
 
 Installed, it runs with the network switched off. The service worker caches the shell; the state lives in
@@ -107,9 +107,9 @@ Installed, it runs with the network switched off. The service worker caches the 
 
 An installable PWA covers desktop and Android today. Native wrappers are a packaging step, not a rewrite:
 
-- **Android APK** — a Trusted Web Activity over the hosted URL, or a Capacitor wrap of `app/`.
+- **Android APK** — a Trusted Web Activity over the hosted URL, or a Capacitor wrap of this folder.
 - **Windows / macOS / Linux** — Tauri or Electron around `app/`.
-- **Single-file HTML** — already is one; `app/index.html` opens from disk.
+- **Single-file HTML** — already is one; `index.html` opens from disk.
 
 Step-by-step, with the trade-offs: [BUILDING.md](BUILDING.md).
 
@@ -144,5 +144,5 @@ Commercial use, white-labelling or a support agreement: open an issue and say wh
 ---
 
 <div align="center">
-<sub>PolyForm Noncommercial 1.0.0 · built by Dr Sohil Momin · <a href="https://drsamonline.github.io/tessera-app/app/">open the console</a></sub>
+<sub>PolyForm Noncommercial 1.0.0 · built by Dr Sohil Momin · <a href="https://drsamonline.github.io/tessera-app/">open the console</a></sub>
 </div>
