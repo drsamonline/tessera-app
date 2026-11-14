@@ -82,6 +82,14 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .card .body{padding:14px}
 
 /* record head */
+.strip{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:var(--gap)}
+.conn{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;
+  border:1px solid var(--line);background:var(--surface);font-size:12px;color:var(--muted)}
+.conn b{color:var(--text);font-weight:600;font-size:12.5px}
+.conn .dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.conn.warn .dot{background:var(--accent)} .conn.warn{color:var(--accent)}
+.conn.bad .dot{background:var(--danger)} .conn.bad{color:var(--danger)}
+.conn time{font-family:var(--mono);font-size:11px}
 .record{display:flex;gap:14px;align-items:center;padding:16px}
 .avatar{width:48px;height:48px;border-radius:12px;background:var(--accent);color:var(--accent-ink);
   display:grid;place-items:center;font-weight:650;font-size:17px;flex:0 0 auto}
@@ -324,11 +332,15 @@ a{color:var(--accent)}
     <!-- UNIFIED ---------------------------------------------------------- -->
     <section class="view" id="unified" data-active>
       <h1 id="recordName">Asha Rao</h1>
-      <p class="sub">One customer, four systems, one record. Every field says where it came from.
-        <button class="rowaction" id="backToList" style="margin-left:8px">All records</button>
-        <button class="rowaction" id="exportJson" style="margin-left:6px">Export JSON</button>
-        <button class="rowaction" id="exportCsv" style="margin-left:6px">Export CSV</button>
-        <button class="rowaction" id="copyLink" style="margin-left:6px">Copy link</button></p>
+      <p class="sub">One customer, four systems, one record. Every field says where it came from.</p>
+      <div class="row" style="margin:-6px 0 12px">
+        <button class="rowaction" id="backToList">All records</button>
+        <button class="rowaction" id="exportJson">Export JSON</button>
+        <button class="rowaction" id="exportCsv">Export CSV</button>
+        <button class="rowaction" id="copyLink">Copy link</button>
+      </div>
+
+      <div class="strip" id="connectors" aria-label="Connected systems"></div>
 
       <div class="grid2">
         <div class="card">
@@ -398,6 +410,7 @@ a{color:var(--accent)}
         <button class="btn primary" id="resolveAll">Resolve all with the engine's rule</button>
         <span class="note" id="conflictSummary"></span>
       </div>
+      <div id="rulesBox"></div>
       <div id="conflictList"></div>
     </section>
 
@@ -572,11 +585,21 @@ function canonicalJSON(value) {
 
 /* ---- seed data: two systems that disagree ------------------------------- */
 const NODES = {
-  hubspot: { id: "hubspot", label: "HubSpot", kind: "sales", trust: 0.82, authority: { email: "authority", stage: "authority" } },
-  zendesk: { id: "zendesk", label: "Zendesk", kind: "support", trust: 0.61, authority: {} },
-  netsuite:{ id: "netsuite", label: "NetSuite", kind: "erp", trust: 0.74, authority: { amount_minor: "authority" } },
-  native:  { id: "native", label: "Tessera", kind: "native", trust: 0.90, authority: {} },
+  hubspot: { id: "hubspot", label: "HubSpot", kind: "sales", trust: 0.82, authority: { email: "authority", stage: "authority" },
+             lastSync: 4, errors: 0 },
+  zendesk: { id: "zendesk", label: "Zendesk", kind: "support", trust: 0.61, authority: {},
+             lastSync: 2, errors: 1 },
+  netsuite:{ id: "netsuite", label: "NetSuite", kind: "erp", trust: 0.74, authority: { amount_minor: "authority" },
+             lastSync: 96, errors: 0 },
+  native:  { id: "native", label: "Tessera", kind: "native", trust: 0.90, authority: {},
+             lastSync: 0, errors: 0 },
 };
+
+function connectorState(node) {
+  if (node.errors > 0) return { state: "warn", label: `${node.errors} error${node.errors > 1 ? "s" : ""}` };
+  if (node.lastSync > 60) return { state: "bad", label: "stale" };
+  return { state: "ok", label: "healthy" };
+}
 
 const RECORDS = [
   { id: "c1", name: "Asha Rao", role: "Director of Operations", company: "Acme Industrial", health: 82,
@@ -775,6 +798,7 @@ const DEFAULT_STATE = {
   view: { filter: "all", sort: "name" },
   savedViews: {},
   customRecords: [],
+  rules: {},             // field -> node, applied to every record
   resolved: {},          // "recordId|field" -> chosen node
   ledger: null,          // [{seq, action, actor, payload, hash, prev}]
   theme: "dark",
@@ -866,16 +890,24 @@ function currentValue(field) {
   const candidates = RECORD[field];
   const resolution = resolveField(field, candidates, Object.fromEntries(
     Object.entries(candidates).map(([node]) => [node, NODES[node].authority[field] || "bidirectional"])));
+  // order: a choice for this record, then your standing rule, then the engine
   const chosen = state.resolved[state.selected + "|" + field];
   if (chosen && candidates[chosen] !== undefined) {
     return { value: candidates[chosen], node: chosen, rule: "chosen by you" };
+  }
+  const rule = (state.rules || {})[field];
+  if (rule && candidates[rule] !== undefined) {
+    return { value: candidates[rule], node: rule, rule: "your standing rule" };
   }
   return { value: resolution.value, node: resolution.node, rule: resolution.rule };
 }
 
 function isConflict(field) {
   const values = new Set(Object.values(RECORD[field]).map(v => canonicalJSON(v)));
-  return values.size > 1 && !state.resolved[state.selected + "|" + field];
+  if (values.size <= 1) return false;
+  if (state.resolved[state.selected + "|" + field]) return false;
+  const rule = (state.rules || {})[field];
+  return !(rule && RECORD[field][rule] !== undefined);
 }
 
 function formatValue(field, value) {
@@ -990,6 +1022,20 @@ function renderFields() {
   chip.className = count ? "chip warn" : "chip ok";
 }
 
+function renderConnectors() {
+  $("#connectors").innerHTML = Object.values(NODES).map(node => {
+    const status = connectorState(node);
+    const ago = node.lastSync === 0 ? "now" : `${node.lastSync}m ago`;
+    return `<span class="conn ${status.state === "ok" ? "" : status.state}"
+      title="${node.label}: last sync ${ago}, ${node.errors} error(s)">
+      <span class="dot" aria-hidden="true"></span>
+      <b>${node.label}</b>
+      <time>${ago}</time>
+      <span>${status.label}</span>
+    </span>`;
+  }).join("");
+}
+
 function renderTimeline() {
   const host = $("#timeline");
   host.innerHTML = ACTIVITY.map(item => `
@@ -1042,6 +1088,25 @@ async function resolveAll() {
   });
 }
 
+function renderRules() {
+  const rules = state.rules || {};
+  const fields = Object.keys(rules);
+  const box = $("#rulesBox");
+  if (!fields.length) { box.innerHTML = ""; return; }
+  box.innerHTML = `<div class="item" style="margin-bottom:12px">
+    <div class="top"><b>Your standing rules</b><span class="chip">applied to every record</span></div>
+    ${fields.map(field => `<div class="row" style="margin:6px 0">
+      <span class="mono">${field.replace(/_/g, " ")}</span>
+      <span class="chip ok">always ${NODES[rules[field]].label}</span>
+      <button class="btn small ghost" data-unrule="${field}">Remove</button>
+    </div>`).join("")}
+  </div>`;
+  $$("[data-unrule]", box).forEach(button => button.onclick = () => {
+    delete state.rules[button.dataset.unrule];
+    save(); renderAll(); toast("Rule removed - the engine decides again");
+  });
+}
+
 function renderConflicts() {
   const host = $("#conflictList");
   const fields = Object.keys(RECORD).filter(isConflict);
@@ -1076,6 +1141,7 @@ function renderConflicts() {
           <span class="chip ${isCurrent ? "ok" : "warn"}">${isCurrent ? "current" : "changes"}</span>
           <span class="mono">${NODES[node].label} · trust ${NODES[node].trust.toFixed(2)}</span>
           <button class="btn small" data-pick="${field}|${node}">${isCurrent ? "Keep" : "Change to this"}</button>
+          <button class="btn small ghost" data-always="${field}|${node}" title="Use this system for this field on every record">Always</button>
         </div>`;
       }).join("")}
       <div class="note">The engine would take <b>${NODES[resolution.node].label}</b> by ${resolution.rule}.</div>
@@ -1085,6 +1151,23 @@ function renderConflicts() {
     btn.onclick = () => {
       const [field, node] = btn.dataset.pick.split("|");
       resolveFieldTo(field, node);
+    };
+  });
+  $$("[data-always]", host).forEach(btn => {
+    btn.onclick = async () => {
+      const [field, node] = btn.dataset.always.split("|");
+      const before = { ...(state.rules || {}) };
+      state.rules = { ...(state.rules || {}), [field]: node };
+      save();
+      await appendEvent("rule.saved", "human", { field, source: node });
+      renderAll();
+      toast(`Rule saved: ${field.replace(/_/g, " ")} always from ${NODES[node].label}`, async () => {
+        state.rules = before;
+        save();
+        await appendEvent("rule.removed", "human", { field });
+        renderAll();
+        toast("Rule removed");
+      });
     };
   });
 }
@@ -1215,8 +1298,8 @@ function renderAll() {
   $("#recordSubtitle").textContent = `${record.role} · ${record.company}`;
   $("#recordAvatar").textContent = record.name.split(" ").map(p => p[0]).join("").slice(0, 2);
   $("#healthChip").textContent = `Relationship health ${record.health}`;
-  renderRecords();
-  renderFields(); renderTimeline(); renderConflicts(); renderLedger(); renderSeats();
+  renderRecords(); renderConnectors();
+  renderFields(); renderTimeline(); renderRules(); renderConflicts(); renderLedger(); renderSeats();
   renderRouting(); renderWorkflows();
   $("#storageNote").textContent =
     "Preferences and the demo ledger are stored in this browser only (localStorage). Clearing site data resets them.";

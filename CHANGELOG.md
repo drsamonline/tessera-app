@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.6.0] - 2026-11-14
+
+### Added
+
+- **Connector strip.** Above every record: each system with its last sync, error count and staleness, coloured green,
+  amber or red. One row, and it is the row an operator actually looks at first.
+- **Saved resolver rules.** **Always** on any candidate turns a repeated decision into a standing rule, applied to
+  every record, listed on the Resolve screen with a Remove button, and written to the ledger as `rule.saved`.
+  Precedence is: a choice for this record, then your rule, then the engine's.
+
+### Changed
+
+- The record actions (All records, Export, Copy link) moved to their own row; they were crowding the subtitle.
+
 ## [1.5.0] - 2026-11-14
 
 ### Added

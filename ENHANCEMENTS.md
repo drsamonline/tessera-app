@@ -16,9 +16,9 @@ Ordered by what a person would notice first.
 | 3 | ~~**Bulk resolve**~~ — apply one rule to every conflict of the same kind | **Shipped in 1.3.0.** One button, engine's rule, undoable | done |
 | 4 | ~~**Field history popover**~~ — click any value, see every write with actor and time | **Shipped in 1.1.0.** The ledger is the differentiator; hiding it behind a tab wasted it | done |
 | 5 | ~~**Conflict preview before merge**~~ — each candidate is marked **current** or **changes**, shipped in 1.5.0 | Turns a guess into a decision | done |
-| 6 | **Connector status strip** — per system: last sync, error count, staleness | The one screen an operator actually needs at 9am | S |
+| 6 | ~~**Connector status strip**~~ — last sync, error count and staleness per system, shipped in 1.6.0 | The one screen an operator actually needs at 9am | done |
 | 7 | ~~**CSV import with dry run**~~ — paste or choose a file, auto-mapped columns, ready/rejected counts, one-press rollback, shipped in 1.5.0 | The single most requested feature of every CRM migration | done |
-| 8 | **Saved resolver rules** — "always take NetSuite for amounts" as a stored policy | Repeated decisions should become policy, not habit | M |
+| 8 | ~~**Saved resolver rules**~~ — an **Always** button on any candidate, applied to every record, shipped in 1.6.0 | Repeated decisions should become policy, not habit | done |
 | 9 | ~~**Export the unified record**~~ — JSON and CSV shipped in 1.4.0. **Printable one-pager** still open | People need to send the record to somebody who is not in the app | S |
 | 10 | **Keyboard-first command palette** — `⌘K` with actions, not just navigation | The power users are the ones who will keep it open | S |
 | 11 | ~~**Deep links**~~ — `#unified/c4` and a Copy link button, shipped in 1.4.0 | Makes the app shareable in Slack, which is how tools spread | done |
