@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.13.0] - 2026-11-14
+
+### Added
+
+- **The live view is the engine's merge, not the console's guess.** When connected, each record is loaded from
+  `/v1/mesh/view/Contact/{id}` and every field shows the source the engine chose and the rule it applied —
+  `HubSpot + Zendesk · agreement`, `HubSpot · authority map`. Recomputing the merge in the browser would be a second
+  implementation of the same decision, which is how two answers appear.
+- A blocked field renders as a conflict, because that is what the engine means by `blocked`.
+- `assets/shot-engine.png` — the console reading a real engine, committed as evidence.
+
+### Fixed
+
+- **The selection did not follow the engine.** After connecting, `state.selected` still pointed at a demo id, so the
+  Records list showed engine records and the Unified view showed a seeded one. It now points at a record that exists.
+- **The canonical envelope was rendered as customer fields** — `tenant_id`, `tx_time`, `valid_from`, `purpose_id` all
+  appeared as rows. The live view is filtered to the same fields the demo record shows.
+
 ## [1.12.0] - 2026-11-14
 
 ### Added

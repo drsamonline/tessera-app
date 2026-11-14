@@ -720,6 +720,14 @@ const NODES = {
              lastSync: 0, errors: 0 },
 };
 
+function sourceLabel(source) {
+  if (!source) return "engine";
+  if (source.includes("+")) {
+    return source.split("+").map(part => (NODES[part] && NODES[part].label) || part).join(" + ");
+  }
+  return (NODES[source] && NODES[source].label) || source;
+}
+
 function connectorState(node) {
   if (node.errors > 0) return { state: "warn", label: `${node.errors} error${node.errors > 1 ? "s" : ""}` };
   if (node.lastSync > 60) return { state: "bad", label: "stale" };
@@ -882,23 +890,44 @@ async function loadEngineRecords() {
   for (const id of listing.ids) {
     const detail = await engineFetch(`/v1/objects/Contact/${id}`);
     const record = detail.record || {};
+    let view = null;
+    try { view = await engineFetch(`/v1/mesh/view/Contact/${id}`); } catch { view = null; }
+
+    // The envelope is not the record. A CRM screen shows the customer, not
+    // tenant_id and tx_time, so the live view is filtered to the same fields the
+    // demo record shows rather than dumping the canonical schema on the page.
+    const SHOWN = ["full_name", "email", "phone", "company_ref", "consent_state",
+                   "stage", "amount_minor", "owner_seat_id"];
     const fields = {};
-    for (const [field, value] of Object.entries(record)) {
-      if (["tenant_id", "valid_to", "tx_time", "retention_policy_id"].includes(field)) continue;
-      fields[field] = { engine: value };
+    const source = (view && view.fields) || record;
+    for (const [field, value] of Object.entries(source)) {
+      if (!SHOWN.includes(field)) continue;
+      if (view && view.fields) {
+        fields[field] = { [value.source || "engine"]: value.value };
+      } else {
+        fields[field] = { engine: value };
+      }
     }
     records.push({
       id, name: record.full_name || record.email || id.slice(0, 8),
-      role: "from the engine", company: record.company_ref || "-",
-      health: 50, fields, activity: [],
+      role: view ? `${view.nodes.length} systems` : "from the engine",
+      company: record.company_ref || "-", health: 50, fields,
+      engineView: view, activity: [],
     });
   }
   state.engineRecords = records;
+  // the selection was a demo id; point it at a record that now exists
+  if (records.length && !records.some(record => record.id === state.selected)) {
+    state.selected = records[0].id;
+    RECORD = records[0].fields;
+    ACTIVITY = records[0].activity;
+  }
   return records;
 }
 
 function activeRecord() {
-  return allRecords().find(record => record.id === state.selected) || RECORDS[0];
+  const pool = allRecords();
+  return pool.find(record => record.id === state.selected) || pool[0] || RECORDS[0];
 }
 
 /* ---- conflict resolution, ported from conflict.py ----------------------- */
@@ -1242,6 +1271,15 @@ function toast(message, onUndo) {
 }
 
 function currentValue(field) {
+  // A record that came from the engine already carries the engine's resolution,
+  // including which node won and by which rule. Recomputing it here would be a
+  // second implementation of the same decision, which is how two answers appear.
+  const view = activeRecord().engineView;
+  if (view && view.fields && view.fields[field]) {
+    const resolved = view.fields[field];
+    return { value: resolved.value, node: resolved.source || "engine",
+             rule: resolved.rule || "engine", blocked: resolved.blocked };
+  }
   const candidates = RECORD[field];
   const resolution = resolveField(field, candidates, Object.fromEntries(
     Object.entries(candidates).map(([node]) => [node, NODES[node].authority[field] || "bidirectional"])));
@@ -1258,6 +1296,8 @@ function currentValue(field) {
 }
 
 function isConflict(field) {
+  const view = activeRecord().engineView;
+  if (view && view.fields && view.fields[field]) return Boolean(view.fields[field].blocked);
   const values = new Set(Object.values(RECORD[field]).map(v => canonicalJSON(v)));
   if (values.size <= 1) return false;
   if (state.resolved[state.selected + "|" + field]) return false;
@@ -1360,7 +1400,7 @@ function renderFields() {
     row.innerHTML = `
       <div class="k">${label}</div>
       <button class="v" type="button" data-hist="${field}" title="See every write to this field">${formatValue(field, value)}</button>
-      <div class="src">${NODES[node].label} · ${rule}</div>`;
+      <div class="src">${sourceLabel(node)} · ${rule.replace(/_/g, " ")}</div>`;
     if (isConflict(field)) {
       const btn = document.createElement("button");
       btn.className = "rowaction";

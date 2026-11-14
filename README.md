@@ -113,8 +113,11 @@ python3 -m tessera.api          # prints its URL and token
 # ?engine=http://127.0.0.1:8080&token=demo-token
 ```
 
-The Records list then comes from `/v1/objects/Contact`, each record from `/v1/objects/Contact/{id}`, and every
-field arrives with the source and rule the engine resolved it by. The engine's CORS allowlist must include the
+The Records list then comes from `/v1/objects/Contact`, each record from `/v1/mesh/view/Contact/{id}`, and every
+field arrives with the source the engine chose and the rule it applied — `HubSpot + Zendesk · agreement`,
+`HubSpot · authority map`. The console does not re-merge: the engine's answer is the answer.
+
+<img src="assets/shot-engine.png" alt="The console reading from a running engine: each field shows the source and rule the engine resolved it by" width="100%"> The engine's CORS allowlist must include the
 console's origin — `docs/46-cors.md` in the engine explains why it is an allowlist and not a wildcard.
 
 ## What this is not
