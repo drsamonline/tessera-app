@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.11.0] - 2026-11-14
+
+### Added
+
+- **Persistent storage request.** `navigator.storage.persist()` is asked once, when Settings is opened — never at
+  boot. Without it the browser may evict the workspace under pressure and the user blames the app.
+- **Update prompt.** When a new service worker installs while one already controls the page, a bar says so and offers
+  Reload, instead of swapping the code under a half-finished edit.
+- **Deadlines on every storage API.** A permission prompt with no UI, a private window or an embedded webview can
+  leave a promise that never settles; the panel now says it could not find out rather than "Checking…" forever.
+
+### Fixed
+
+- **The ledger no longer blocks boot.** It was awaited after hydration, so a stalled `crypto.subtle` or a slow
+  IndexedDB left the whole app on the "Building the chain…" state. It is now kicked off at first paint and renders
+  itself when ready.
+- **Deep links resolve on the first paint.** The route used to be applied after storage hydration, so opening
+  `#ledger` showed the default view for as long as the storage layer took.
+- **The five seed events are hashed at build time** and embedded, so the chain is on screen immediately. Reset still
+  rebuilds from scratch and Verify always recomputes — the embedded hashes are a cache, not a claim.
+
+### A note on the harness
+
+`crypto.subtle` and `navigator.storage` do not settle reliably under Chromium's `--virtual-time-budget`. Three
+separate "bugs" this session turned out to be the harness, and one did not. The rule adopted: a headless DOM dump is
+evidence, not proof — screenshot the thing before believing it.
+
 ## [1.10.0] - 2026-11-14
 
 ### Added

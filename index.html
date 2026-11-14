@@ -242,6 +242,10 @@ a{color:var(--accent)}
     padding-bottom:env(safe-area-inset-bottom)}
 }
 /* toast */
+#update{position:fixed;left:50%;transform:translateX(-50%);top:12px;z-index:90;
+  display:flex;align-items:center;gap:12px;background:var(--raise);border:1px solid var(--accent);
+  border-radius:999px;padding:8px 10px 8px 16px;font-size:13px;box-shadow:0 12px 30px -12px rgba(0,0,0,.7)}
+#update[hidden]{display:none}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(74px + env(safe-area-inset-bottom));
   background:var(--raise);border:1px solid var(--line);border-radius:999px;padding:10px 16px;font-size:13px;
   opacity:0;pointer-events:none;transition:opacity var(--base);z-index:60;max-width:92vw}
@@ -650,6 +654,10 @@ a{color:var(--accent)}
     <div class="sheet-body" id="histBody"></div>
   </div>
 </div>
+<div id="update" hidden>
+  <span>A new version is ready.</span>
+  <button class="btn small" id="reloadNow">Reload</button>
+</div>
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -934,6 +942,31 @@ function idbRun(mode, work) {
 const idbGet = key => idbRun("readonly", store => store.get(key));
 const idbSet = (key, value) => idbRun("readwrite", store => store.put(value, key));
 
+/* Ask once, remember the answer. Without this the browser may evict the whole
+   workspace under pressure, and the user blames the app rather than the quota. */
+let persistState = "";
+
+/* Every storage API here gets a deadline. A permission prompt with no UI, a
+   private window, an embedded webview - each of them can leave a promise that
+   never settles, and a panel that says "Checking…" forever is worse than one
+   that says it could not find out. */
+function withTimeout(promise, ms, fallback) {
+  return Promise.race([
+    promise,
+    new Promise(resolve => setTimeout(() => resolve(fallback), ms)),
+  ]).catch(() => fallback);
+}
+
+async function requestPersistence() {
+  if (!navigator.storage || !navigator.storage.persist) { persistState = "not supported"; return; }
+  const already = navigator.storage.persisted
+    ? await withTimeout(navigator.storage.persisted(), 1500, false) : false;
+  if (already) { persistState = "granted"; return; }
+  const granted = await withTimeout(navigator.storage.persist(), 1500, null);
+  persistState = granted === null ? "no answer from the browser"
+              : granted ? "granted" : "denied by the browser";
+}
+
 function mergeState(raw) {
   const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
   return Object.assign(structuredClone(DEFAULT_STATE), parsed || {});
@@ -966,8 +999,9 @@ function save() {
 
 async function storageReport() {
   const lines = [`Backend: ${storageBackend === "indexeddb" ? "IndexedDB + localStorage mirror" : "localStorage only"}`];
+  if (persistState) lines.push(`Persistent: ${persistState}`);
   try {
-    const estimate = await navigator.storage.estimate();
+    const estimate = await withTimeout(navigator.storage.estimate(), 1500, null);
     if (estimate && estimate.quota) {
       lines.push(`Used: ${(estimate.usage / 1024).toFixed(0)} KB of ${(estimate.quota / 1048576).toFixed(0)} MB available`);
     }
@@ -986,6 +1020,12 @@ const SEED_EVENTS = [
   { action: "deal.stage", actor: "human", payload: { from: "scoping", to: "proposal" } },
 ];
 
+/* The five seed events, hashed once at build time. Boot uses these so the chain
+   is on screen at first paint instead of after a round of crypto.subtle - which
+   takes milliseconds in a browser and can hang in an environment without a real
+   clock. Reset still rebuilds them from scratch, and verify always recomputes. */
+const SEED_LEDGER = [{"seq": 1, "action": "contact.sync", "actor": "system", "payload": {"node": "hubspot", "field": "email", "value": "asha@acme.example"}, "prev": "0000000000000000000000000000000000000000000000000000000000000000", "hash": "8387edf587d629aaedd40722b3e4327aa481f294cbe5cba2bd23bff302685fb7"}, {"seq": 2, "action": "contact.sync", "actor": "system", "payload": {"node": "zendesk", "field": "email", "value": "asha.rao@acme.example"}, "prev": "8387edf587d629aaedd40722b3e4327aa481f294cbe5cba2bd23bff302685fb7", "hash": "193381dd139b2f878fbfacbc71085d5b9f3d1cb85e9d7cde74e40a391f6c45d4"}, {"seq": 3, "action": "conflict.resolved", "actor": "human", "payload": {"field": "email", "rule": "authority map", "winner": "hubspot"}, "prev": "193381dd139b2f878fbfacbc71085d5b9f3d1cb85e9d7cde74e40a391f6c45d4", "hash": "1d3ad328402154d87d5eb8d0ac557875d32636422db595f328a7a25c156bcbfd"}, {"seq": 4, "action": "task.assigned", "actor": "system", "payload": {"seat": "Support triage", "occupant": "priya"}, "prev": "1d3ad328402154d87d5eb8d0ac557875d32636422db595f328a7a25c156bcbfd", "hash": "7c88b7a7f3f6fe179031aba489c0bfd645db039d60266b09ca5fb4785150c9f9"}, {"seq": 5, "action": "deal.stage", "actor": "human", "payload": {"from": "scoping", "to": "proposal"}, "prev": "7c88b7a7f3f6fe179031aba489c0bfd645db039d60266b09ca5fb4785150c9f9", "hash": "0efca780d51e669f99393e7a3478ccbb8d50f718b1938d141a0c19bb2afae9f5"}];
+
 async function buildLedger() {
   const events = [];
   let prev = "0".repeat(64);
@@ -999,7 +1039,10 @@ async function buildLedger() {
 }
 
 async function ensureLedger() {
-  if (!state.ledger) { state.ledger = await buildLedger(); save(); }
+  if (!state.ledger) {
+    state.ledger = structuredClone(SEED_LEDGER);
+    save();
+  }
   return state.ledger;
 }
 
@@ -1492,7 +1535,12 @@ function renderWorkflows() {
 
 async function refreshStorage() {
   const el = $("#storageStatus");
-  if (el) el.textContent = await storageReport();
+  if (!el) return;
+  el.textContent = "Checking storage…";
+  // Asked here, not at boot: a permission prompt with no UI never settles, and a
+  // boot that waits on it never finishes. Settings is the only place it matters.
+  if (!persistState) await requestPersistence();
+  el.textContent = await storageReport();
 }
 
 function renderAll() {
@@ -1782,6 +1830,22 @@ function go(view, recordId) {
   if (location.hash !== target) history.replaceState(null, "", target);
 }
 
+function applyRoute() {
+  const route = routeFromHash();
+  if (!route) return;
+  if (route.recordId && allRecords().some(r => r.id === route.recordId)) {
+    state.selected = route.recordId;
+    const record = activeRecord();
+    RECORD = record.fields;
+    ACTIVITY = record.activity;
+    save();
+    renderAll();
+  }
+  if (document.getElementById(route.view)) go(route.view);
+  if (route.view === "records" && route.recordId === "import") openImport();
+  if (route.view === "command") openPalette();
+}
+
 function routeFromHash() {
   const raw = location.hash.replace("#", "");
   if (!raw) return null;
@@ -1913,6 +1977,11 @@ $("#workspaceFile").onchange = event => {
     } catch { toast("That file could not be read"); }
   };
   reader.readAsText(file);
+};
+
+$("#reloadNow").onclick = () => {
+  sessionStorage.setItem("tessera.reloaded", "1");
+  location.reload();
 };
 
 $("#printOne").onclick = () => {
@@ -2080,13 +2149,16 @@ document.addEventListener("keydown", event => {
   renderAll();
   syncViewBar();
   renderSavedViews();
+  applyRoute();
+  // The chain is not needed to render a record. Kick it off and let boot finish;
+  // hashing five events takes milliseconds in a browser and can hang outright in
+  // an environment without a real clock, and neither should hold up the screen.
+  ensureLedger().then(() => flushOutbox()).then(() => { renderLedger(); renderQueue(); }).catch(() => {});
+  renderQueue();
 
   state = await loadState();
   applyTheme(state.theme);
   applyDensity(state.density);
-  await ensureLedger();
-  await flushOutbox();
-  renderQueue();
   $("#search").value = state.query || "";
   const record = activeRecord();
   RECORD = record.fields;
@@ -2102,25 +2174,34 @@ document.addEventListener("keydown", event => {
     toast(`Searching for “${state.query}”`);
   }
 
-  const route = routeFromHash();
-  if (route) {
-    if (route.recordId && allRecords().some(r => r.id === route.recordId)) {
-      state.selected = route.recordId;
-      const record = activeRecord();
-      RECORD = record.fields;
-      ACTIVITY = record.activity;
-      save();
-      renderAll();
-    }
-    if (document.getElementById(route.view)) go(route.view);
-    if (route.view === "records" && route.recordId === "import") openImport();
-    if (route.view === "command") openPalette();
-  }
+  applyRoute();
   syncViewBar();
   renderSavedViews();
-  refreshStorage();
+  // deferred: the report is decoration, and a storage API that stalls must never
+  // sit between the first paint and the rest of the boot
+  setTimeout(refreshStorage, 0);
   if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
+    navigator.serviceWorker.register("sw.js").then(registration => {
+      registration.update().catch(() => {});
+      registration.addEventListener("updatefound", () => {
+        const fresh = registration.installing;
+        if (!fresh) return;
+        fresh.addEventListener("statechange", () => {
+          // a worker that reaches "installed" while one already controls this page
+          // is a new version, and the honest thing is to say so rather than swap
+          // the code underneath a half-finished edit.
+          if (fresh.state === "installed" && navigator.serviceWorker.controller) {
+            $("#update").hidden = false;
+          }
+        });
+      });
+    }).catch(() => {});
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (sessionStorage.getItem("tessera.reloaded")) {
+        sessionStorage.removeItem("tessera.reloaded");
+        toast("Updated");
+      }
+    });
   }
 })();
 </script>
