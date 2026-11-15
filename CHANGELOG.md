@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.30.0] - 2026-11-15
+
+### Changed
+
+- **Dual licensing.** [COMMERCIAL.md](COMMERCIAL.md) adds a paid commercial licence alongside PolyForm Noncommercial
+  1.0.0, matching the engine. `LICENSE` gains a header pointing at it and `TERMS.md` says "dual-licensed" instead of
+  "commercial use needs a separate licence" — which is now precisely what COMMERCIAL.md offers.
+
+### The sentence that matters in it
+
+> It stores whatever you put in it, in a browser. If you deploy it for a client, **you** are the Data Fiduciary for that
+> data. A licence does not transfer that obligation, and no licence can.
+
 ## [1.29.0] - 2026-11-15
 
 ### Added

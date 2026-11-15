@@ -5,8 +5,8 @@ Effective: 15 November 2026
 
 ## What you are licensed to do
 
-The software is licensed under the **PolyForm Noncommercial License 1.0.0** — see `LICENSE`. In short: you may use,
-modify and share it for any non-commercial purpose. Commercial use needs a separate licence; write to
+The software is **dual-licensed**. Non-commercial use is free under the **PolyForm Noncommercial License 1.0.0** — see
+`LICENSE`. Commercial use is licensed separately by agreement — see [COMMERCIAL.md](COMMERCIAL.md) and write to
 sohilmomin2000@gmail.com.
 
 These terms cover use of the software and of the hosted copies. They do not replace the licence; where they conflict,

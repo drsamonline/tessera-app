@@ -111,7 +111,8 @@ writes the whole workspace to one file, and **Restore** reads it back.
 
 | | |
 |---|---|
-| [LICENSE](LICENSE) | PolyForm Noncommercial 1.0.0 |
+| [LICENSE](LICENSE) | PolyForm Noncommercial 1.0.0 — free for noncommercial use |
+| [COMMERCIAL.md](COMMERCIAL.md) | The commercial licence, by agreement |
 | [PRIVACY.md](PRIVACY.md) | What is stored on your device, what leaves it, and who is responsible |
 | [TERMS.md](TERMS.md) | Use, warranty, and what is yours to decide |
 | [SECURITY.md](SECURITY.md) | How to report a vulnerability, and the known limits stated up front |
