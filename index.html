@@ -137,9 +137,15 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .empty{padding:24px 14px;color:var(--muted);font-size:13.5px;text-align:center}
 kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-bottom-width:2px;
   border-radius:5px;padding:1px 5px;background:var(--raise)}
+.linkish{color:var(--accent);font-weight:600;text-decoration:none;
+  border-bottom:1px dashed color-mix(in srgb,var(--accent) 50%,transparent)}
+.linkish:hover{border-bottom-style:solid}
 .editbtn{width:30px;height:30px;border-radius:8px;border:1px solid transparent;color:var(--muted);
   font-size:13px;opacity:.55;transition:opacity var(--fast),border-color var(--fast)}
-.frow:hover .editbtn{opacity:1;border-color:var(--line-control)}
+.frow:hover .linkish{color:var(--accent);font-weight:600;text-decoration:none;
+  border-bottom:1px dashed color-mix(in srgb,var(--accent) 50%,transparent)}
+.linkish:hover{border-bottom-style:solid}
+.editbtn{opacity:1;border-color:var(--line-control)}
 .editbtn:hover{color:var(--accent);border-color:var(--accent)}
 .frow{display:grid;grid-template-columns:132px minmax(0,1fr) auto auto auto;gap:10px 14px;
   align-items:center;padding:12px 14px;border-top:1px solid var(--line);min-height:54px;
@@ -229,6 +235,11 @@ a{color:var(--accent)}
   border-radius:var(--r-sm);font-size:13.5px;min-height:44px;color:var(--text)}
 .pal-item[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
 .pal-item .kind{margin-left:auto;font-size:10.5px;font-family:var(--mono);opacity:.7}
+#dealSheet{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;display:grid;place-items:center;
+  padding:16px;backdrop-filter:blur(2px)}
+#dealSheet[hidden]{display:none}
+@media (max-width:640px){#dealSheet{place-items:end center;padding:0}
+  #dealSheet .sheet{width:100%;border-radius:var(--r-lg) var(--r-lg) 0 0;max-height:92vh}}
 #del{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;display:grid;place-items:center;
   padding:16px;backdrop-filter:blur(2px)}
 #del[hidden]{display:none}
@@ -732,6 +743,15 @@ a{color:var(--accent)}
     <input id="palInput" type="text" placeholder="Jump to a customer, or type a command…"
            autocomplete="off" spellcheck="false">
     <div id="palList" role="listbox" aria-label="Commands"></div>
+  </div>
+</div>
+<div id="dealSheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="dealTitle">
+    <div class="sheet-head">
+      <b id="dealTitle">Deal</b>
+      <button class="iconbtn" id="dealClose" aria-label="Close">✕</button>
+    </div>
+    <div class="sheet-body" id="dealBody"></div>
   </div>
 </div>
 <div id="del" hidden>
@@ -1793,17 +1813,28 @@ function renderRelated() {
   host.innerHTML = `
     <div class="row" style="margin:0 0 10px">
       <span class="mono" style="font-size:11px;color:var(--muted)">COMPANY</span>
-      <b>${company ? company.name : companyRef}</b>
+      <button class="linkish" data-company="${company ? company.name : companyRef}"
+        title="Show every record at this company">${company ? company.name : companyRef}</button>
       ${company && company.domain ? `<span class="note">${company.domain}</span>` : ""}
     </div>
     ${deals.length ? deals.map(deal => `
-      <div class="row" style="margin:6px 0">
+      <button class="row" data-deal="${deal.id}" style="margin:6px 0;width:100%;text-align:left;
+        border-radius:8px;padding:6px 8px" title="Open this deal">
         <span class="mono" style="font-size:11px;color:var(--muted);min-width:64px">DEAL</span>
         <span>${deal.name}</span>
         <span class="chip">${deal.stage || "unknown"}</span>
         <span class="mono">${formatValue("amount_minor", deal.amount_minor || 0)}</span>
-      </div>`).join("")
+      </button>`).join("")
       : `<p class="note">No deals for this company.</p>`}`;
+  $$("[data-deal]", host).forEach(button =>
+    button.onclick = () => openDeal(button.dataset.deal));
+  const companyButton = $("[data-company]", host);
+  if (companyButton) companyButton.onclick = () => {
+    state.query = companyButton.dataset.company;
+    save();
+    $("#search").value = state.query;
+    go("records");
+  };
 }
 
 function renderNotes() {
@@ -2169,6 +2200,7 @@ document.addEventListener("keydown", event => {
     if (!$("#edit").hidden) closeSheet("#edit");
     if (!$("#mail").hidden) closeSheet("#mail");
     if (!$("#del").hidden) closeSheet("#del");
+    if (!$("#dealSheet").hidden) closeSheet("#dealSheet");
   }
 });
 
@@ -2248,6 +2280,61 @@ $("#palInput").onkeydown = event => {
   if (event.key === "Enter") { event.preventDefault(); runPalette(palIndex); }
 };
 $("#pal").onclick = event => { if (event.target.id === "pal") closePalette(); };
+
+/* ---- a deal, with the same provenance a contact gets --------------------- */
+async function openDeal(dealId) {
+  const body = $("#dealBody");
+  const deal = (state.engineDeals || []).find(item => item.id === dealId);
+  $("#dealTitle").textContent = deal ? deal.name : "Deal";
+  body.innerHTML = `<p class="note">Reading…</p>`;
+  openSheet("#dealSheet");
+  if (!(state.engine && state.engine.live)) {
+    if (state.engine && state.engine.url) {
+      body.innerHTML = `<p class="note">Waiting for the engine…</p>`;
+      return;
+    }
+    body.innerHTML = deal ? renderDealFields(deal, null)
+      : `<p class="note">No engine connected.</p>`;
+    return;
+  }
+  try {
+    const view = await engineFetch(`/v1/mesh/view/Deal/${dealId}`);
+    body.innerHTML = renderDealFields(deal || {}, view);
+  } catch (error) {
+    body.innerHTML = `<p class="note">Could not read the deal: ${error.message}</p>`;
+  }
+}
+
+const DEAL_LABELS = { name: "Name", stage: "Stage", amount_minor: "Amount",
+                      currency: "Currency", company_ref: "Company" };
+
+function renderDealFields(deal, view) {
+  // the same rule as the record view: the engine's answer, not a second one
+  const SHOWN = ["name", "stage", "amount_minor", "currency", "company_ref"];
+  const rows = SHOWN.filter(field => (view && view.fields && view.fields[field]) || deal[field])
+    .map(field => {
+      const resolved = view && view.fields && view.fields[field];
+      const value = resolved ? resolved.value : deal[field];
+      const source = resolved ? `${sourceLabel(resolved.source)} · ${String(resolved.rule).replace(/_/g, " ")}`
+                              : "from the engine";
+      const label = DEAL_LABELS[field] || field.replace(/_/g, " ");
+      let shown = value;
+      if (field === "amount_minor") shown = formatValue("amount_minor", value);
+      if (field === "company_ref") {
+        // a uuid on a customer screen is a database leak, not information
+        const match = (state.engineCompanies || []).find(item => `Company:${item.id}` === value);
+        shown = match ? match.name : value;
+      }
+      return `<div class="frow" style="grid-template-columns:120px minmax(0,1fr) auto">
+        <div class="k">${label}</div><div class="v">${shown}</div>
+        <div class="src">${source}</div></div>`;
+    }).join("");
+  const nodes = view && view.nodes ? `<p class="note" style="margin-top:12px">Read from ${view.nodes.join(", ")}.</p>` : "";
+  return rows + nodes;
+}
+
+$("#dealClose").onclick = () => closeSheet("#deal");
+$("#dealSheet").onclick = event => { if (event.target.id === "dealSheet") closeSheet("#dealSheet"); };
 
 /* ---- tombstone a record --------------------------------------------------- */
 function openDelete() {
@@ -2638,7 +2725,7 @@ $("#impFile").onchange = event => {
   reader.readAsText(file);
 };
 
-["#hist", "#imp", "#pal", "#new", "#edit", "#mail", "#del"].forEach(id => trapFocus($(id)));
+["#hist", "#imp", "#pal", "#new", "#edit", "#mail", "#del", "#dealSheet"].forEach(id => trapFocus($(id)));
 
 /* ---- navigation --------------------------------------------------------- */
 function go(view, recordId) {
@@ -2665,6 +2752,7 @@ function applyRoute() {
   }
   if (document.getElementById(route.view)) go(route.view);
   if (route.view === "records" && route.recordId === "import") openImport();
+  if (route.view === "deal" && route.recordId) openDeal(route.recordId);
   if (route.view === "command") openPalette();
 }
 
@@ -3005,7 +3093,9 @@ document.addEventListener("keydown", event => {
   if (query.get("engine")) {
     $("#engineUrl").value = query.get("engine");
     $("#engineToken").value = query.get("token") || "";
-    connectEngine();
+    // a deep link into a deal or a record resolves before the engine is
+    // connected, so the route has to be applied again once it is
+    connectEngine().then(() => applyRoute());
   }
 
   // a shared link or text from the OS share sheet lands in the search box

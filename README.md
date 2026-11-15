@@ -45,7 +45,7 @@ shows **where every value came from**, and records the whole thing in a hash cha
 | **Workforce** | Work goes to a position, not a person. The router shows its term-by-term arithmetic. **Assign**, **assign to me**, or **escalate** with a signed packet — each undoable. |
 | **Automate** | A workflow written by an agent is a proposal. The run button is disabled until a person approves it. |
 | **Tombstone** | Deleting asks for a reason first. The record stops being served; the reason and the deletion stay in the chain |
-| **Related** | On a record: its company, and that company's deals with stage and value — the relational spine, read from the engine |
+| **Related** | On a record: its company (click to see everyone at it) and that company's deals. A deal opens with the same per-field provenance a contact gets |
 | **Report** | Contacts, open conflicts, deals and pipeline value; pipeline by stage; which system supplied what share of the data; per-record completeness |
 | **Settings** | Theme, density, live storage report, a one-file **workspace backup**, and an **engine connection** — point it at a running TESSERA API and the Records list comes from it. |
 
@@ -99,7 +99,7 @@ writes the whole workspace to one file, and **Restore** reads it back.
 | Contrast | every text pair measured at **≥ 4.5:1** in both themes |
 | Touch targets | **44px** minimum; the rail becomes a bottom bar under 860px |
 | Keyboard | **⌘K** command palette, **1–7** sections, **/** search, **T** theme, full focus rings |
-| Deep links | `#unified/c4` opens that customer; `#records` opens the list; `#command` opens the palette |
+| Deep links | `#unified/c4` opens that customer; `#deal/<id>` opens a deal; `#records` opens the list; `#command` the palette |
 | Print | `@media print` forces paper tokens — see [the sample output](assets/one-pager.pdf) |
 | Accessibility | [A11Y.md](A11Y.md) — eight browser checks, a measured contrast table, and what was not tested |
 | Motion | honours `prefers-reduced-motion` |

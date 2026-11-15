@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.20.0] - 2026-11-15
+
+### Added
+
+- **Deals open.** Clicking a deal on the Related card shows it with the same per-field provenance a contact gets —
+  `HubSpot + NetSuite · agreement` — read from `/v1/mesh/view/Deal/{id}`. `#deal/<id>` deep-links to one.
+- **The company is a link.** Clicking it filters the Records list to everyone at that company.
+- Verified: `#deal/018f…0001` renders *Acme renewal · proposal · ₹45,000.00 · INR · Acme Industrial*, every row sourced.
+
+### Fixed
+
+- **The deal sheet's element id collided with the route name.** `applyRoute` found `<div id="deal">` and treated it as a
+  view, then `go("deal")` rewrote the hash and threw away the record id, so a deep link opened an empty sheet. The
+  element is `#dealSheet` now.
+- **A deep link resolved before the engine connected**, so the sheet said "No engine connected" on a page that was
+  about to connect. The route is applied again once the connection succeeds.
+- **A uuid was printed on a customer screen.** `company_ref` now renders as the company name.
+
 ## [1.19.0] - 2026-11-15
 
 ### Added
