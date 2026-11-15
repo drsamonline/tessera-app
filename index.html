@@ -2,6 +2,8 @@
 <html lang="en" data-theme="dark" data-density="comfortable">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src http: https:; base-uri 'none'; form-action 'none'; object-src 'none'; frame-ancestors 'none'">
+<meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>TESSERA — console</title>
 <meta name="description" content="One customer view across every system, with a tamper-evident ledger. Runs entirely in your browser, offline.">
@@ -737,7 +739,7 @@ a{color:var(--accent)}
           </p>
           <p class="note">
             Built by <b>Dr Sohil Momin</b>. Licensed under PolyForm Noncommercial 1.0.0.
-            If it saved you an afternoon, <a href="https://ko-fi.com/matneo">buy the author a coffee</a>.
+            If it saved you an afternoon, <a href="https://ko-fi.com/matneo" rel="noopener noreferrer" referrerpolicy="no-referrer">buy the author a coffee</a>.
           </p>
           <p class="note" id="storageNote"></p>
         </div>
@@ -977,6 +979,17 @@ function nodeInfo(id) {
   const first = String(id || "").split("+")[0];
   if (NODES[first]) return { ...NODES[first], label: sourceLabel(id) };
   return { ...UNKNOWN_NODE, label: sourceLabel(id) };
+}
+
+/* Every value that comes from a record, an engine or a file goes through this
+   before it reaches innerHTML. Without it, a CSV with `<img src=x onerror=...>`
+   in a name column is script execution in the origin that holds the bearer
+   token - a stored XSS with a credential-theft payload, reachable by importing a
+   file somebody sent you. */
+function esc(value) {
+  return String(value === null || value === undefined ? "" : value)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
 function sourceLabel(source) {
@@ -1677,7 +1690,7 @@ function renderRecords() {
     return `<button class="rec" data-open="${record.id}" ${record.id === state.selected ? 'aria-current="true"' : ""}>
       <span class="av" aria-hidden="true">${initials}</span>
       <span>
-        <span class="nm">${record.name}</span>
+        <span class="nm">${esc(record.name)}</span>
         <span class="meta">${record.role} · ${record.company}<br>${email}</span>
       </span>
       <span class="right">
@@ -1721,10 +1734,10 @@ function renderFields() {
     if (isConflict(field)) row.dataset.conflict = "1";
     const label = field === "amount_minor" ? "Deal amount" : field.replace(/_/g, " ");
     row.innerHTML = `
-      <div class="k">${label}</div>
-      <button class="v" type="button" data-hist="${field}" title="See every write to this field">${formatValue(field, value)}</button>
-      <div class="src">${sourceLabel(node)} · ${rule.replace(/_/g, " ")}</div>
-      <button class="editbtn" type="button" data-edit="${field}" aria-label="Edit ${label}"
+      <div class="k">${esc(label)}</div>
+      <button class="v" type="button" data-hist="${esc(field)}" title="See every write to this field">${esc(formatValue(field, value))}</button>
+      <div class="src">${esc(sourceLabel(node))} · ${esc(rule.replace(/_/g, " "))}</div>
+      <button class="editbtn" type="button" data-edit="${esc(field)}" aria-label="Edit ${esc(label)}"
         title="Edit this field">✎</button>`;
     if (isConflict(field)) {
       const btn = document.createElement("button");
@@ -1771,7 +1784,7 @@ function renderReport() {
   const most = Math.max(1, ...stages.map(([, count]) => count));
   $("#reportPipeline").innerHTML = stages.length
     ? stages.map(([stage, count]) => `
-        <div class="bar"><span>${stage}</span>
+        <div class="bar"><span>${esc(stage)}</span>
           <span class="track"><span class="fill" style="width:${(count / most) * 100}%"></span></span>
           <span class="n">${count}</span></div>`).join("")
     : `<p class="note">No deals yet. ${state.engine && state.engine.live
@@ -1794,7 +1807,7 @@ function renderReport() {
   $("#reportSources").innerHTML = Object.entries(sources)
     .sort((a, b) => b[1] - a[1])
     .map(([label, count]) => `
-      <div class="bar"><span>${label}</span>
+      <div class="bar"><span>${esc(label)}</span>
         <span class="track"><span class="fill" style="width:${(count / totalFields) * 100}%"></span></span>
         <span class="n">${Math.round((count / totalFields) * 100)}%</span></div>`).join("");
 
@@ -1804,7 +1817,7 @@ function renderReport() {
     return { name: record.name, filled, of: wanted.length };
   }).sort((a, b) => a.filled - b.filled).slice(0, 8);
   $("#reportCompleteness").innerHTML = rows.map(row => `
-    <div class="bar"><span>${row.name}</span>
+    <div class="bar"><span>${esc(row.name)}</span>
       <span class="track"><span class="fill" style="width:${(row.filled / row.of) * 100}%"></span></span>
       <span class="n">${row.filled}/${row.of}</span></div>`).join("");
 }
@@ -1841,15 +1854,15 @@ function renderPipeline() {
     const total = inStage.reduce((sum, deal) => sum + (deal.amount_minor || 0), 0);
     const next = STAGE_ORDER[STAGE_ORDER.indexOf(stage) + 1];
     return `<div class="col">
-      <header><b>${stage.replace(/_/g, " ")}</b><span>${inStage.length} · ${formatValue("amount_minor", total)}</span></header>
+      <header><b>${esc(stage.replace(/_/g, " "))}</b><span>${inStage.length} · ${formatValue("amount_minor", total)}</span></header>
       <div class="cards">
         ${inStage.map(deal => {
           const company = (state.engineCompanies || [])
             .find(item => `Company:${item.id}` === deal.company_ref);
           return `<div class="dcard">
-            <b>${deal.name}</b>
+            <b>${esc(deal.name)}</b>
             <span class="amt">${formatValue("amount_minor", deal.amount_minor || 0)}</span>
-            <span class="co">${company ? company.name : ""}</span>
+            <span class="co">${company ? esc(company.name) : ""}</span>
             <div class="row" style="margin-top:8px;gap:6px">
               <button class="move" data-open="${deal.id}">Open</button>
               ${next ? `<button class="move" data-move="${deal.id}|${next}">→ ${next.replace(/_/g, " ")}</button>` : ""}
@@ -1914,16 +1927,16 @@ function renderRelated() {
   host.innerHTML = `
     <div class="row" style="margin:0 0 10px">
       <span class="mono" style="font-size:11px;color:var(--muted)">COMPANY</span>
-      <button class="linkish" data-company="${company ? company.name : companyRef}"
-        title="Show every record at this company">${company ? company.name : companyRef}</button>
+      <button class="linkish" data-company="${esc(company ? company.name : companyRef)}"
+        title="Show every record at this company">${esc(company ? company.name : companyRef)}</button>
       ${company && company.domain ? `<span class="note">${company.domain}</span>` : ""}
     </div>
     ${deals.length ? deals.map(deal => `
       <button class="row" data-deal="${deal.id}" style="margin:6px 0;width:100%;text-align:left;
         border-radius:8px;padding:6px 8px" title="Open this deal">
         <span class="mono" style="font-size:11px;color:var(--muted);min-width:64px">DEAL</span>
-        <span>${deal.name}</span>
-        <span class="chip">${deal.stage || "unknown"}</span>
+        <span>${esc(deal.name)}</span>
+        <span class="chip">${esc(deal.stage || "unknown")}</span>
         <span class="mono">${formatValue("amount_minor", deal.amount_minor || 0)}</span>
       </button>`).join("")
       : `<p class="note">No deals for this company.</p>`}`;
@@ -1950,7 +1963,7 @@ function renderNotes() {
     !retracted.has(event.payload.note));
   host.innerHTML = notes.length
     ? notes.slice().reverse().map(event => `
-        <li><time>#${event.seq} · ${event.actor}</time><p>${event.payload.text}</p></li>`).join("")
+        <li><time>#${event.seq} · ${event.actor}</time><p>${esc(event.payload.text)}</p></li>`).join("")
     : `<li style="border-left-color:transparent;padding-left:0"><p class="note">
          No notes on this record. A note is a ledger event, so it is as durable as everything else.</p></li>`;
 }
@@ -1973,7 +1986,7 @@ async function addNote() {
 function renderTimeline() {
   const host = $("#timeline");
   host.innerHTML = ACTIVITY.map(item => `
-    <li><time>${item.at} · ${nodeInfo(item.node).label}</time><p>${item.text}</p></li>`).join("");
+    <li><time>${esc(item.at)} · ${esc(nodeInfo(item.node).label)}</time><p>${esc(item.text)}</p></li>`).join("");
 }
 
 function engineWinner(field) {
@@ -2073,7 +2086,7 @@ function renderConflicts() {
         return `<div class="row" style="margin:6px 0">
           <span class="val">${formatValue(field, value)}</span>
           <span class="chip ${isCurrent ? "ok" : "warn"}">${isCurrent ? "current" : "changes"}</span>
-          <span class="mono">${nodeInfo(node).label} · trust ${nodeInfo(node).trust.toFixed(2)}</span>
+          <span class="mono">${esc(nodeInfo(node).label)} · trust ${nodeInfo(node).trust.toFixed(2)}</span>
           <button class="btn small" data-pick="${field}|${node}">${isCurrent ? "Keep" : "Change to this"}</button>
           <button class="btn small ghost" data-always="${field}|${node}" title="Use this system for this field on every record">Always</button>
         </div>`;
@@ -2429,8 +2442,8 @@ function renderDealFields(deal, view) {
         shown = match ? match.name : value;
       }
       return `<div class="frow" style="grid-template-columns:120px minmax(0,1fr) auto">
-        <div class="k">${label}</div><div class="v">${shown}</div>
-        <div class="src">${source}</div></div>`;
+        <div class="k">${esc(label)}</div><div class="v">${esc(shown)}</div>
+        <div class="src">${esc(source)}</div></div>`;
     }).join("");
   const nodes = view && view.nodes ? `<p class="note" style="margin-top:12px">Read from ${view.nodes.join(", ")}.</p>` : "";
   return rows + nodes;
@@ -2728,8 +2741,15 @@ function openImport() {
 }
 function closeImport() { closeSheet("#imp"); }
 
+const MAX_IMPORT_BYTES = 2 * 1024 * 1024;
+
 function previewImport() {
   const text = $("#impText").value;
+  if (text.length > MAX_IMPORT_BYTES) {
+    $("#impSummary").textContent =
+      `That is ${(text.length / 1048576).toFixed(1)} MB. The limit is 2 MB — split the file.`;
+    return;
+  }
   const { headers, rows } = parseCsv(text);
   if (!headers.length) { $("#impSummary").textContent = "Paste a CSV first."; return; }
 
@@ -2783,9 +2803,9 @@ function scoreImport() {
   $("#impCommit").disabled = valid.length === 0;
   $("#impResult").innerHTML =
     valid.slice(0, 4).map((record, index) =>
-      `<div class="prow"><span class="mono">+${index + 1}</span><span>${record.full_name || ""} ${record.email ? "· " + record.email : ""}</span></div>`).join("") +
+      `<div class="prow"><span class="mono">+${index + 1}</span><span>${esc(record.full_name || "")} ${record.email ? "· " + esc(record.email) : ""}</span></div>`).join("") +
     rejected.slice(0, 4).map(item =>
-      `<div class="prow bad"><span class="mono">line ${item.line}</span><span>${item.why}</span></div>`).join("");
+      `<div class="prow bad"><span class="mono">line ${item.line}</span><span>${esc(item.why)}</span></div>`).join("");
 }
 
 async function commitImport() {
@@ -2903,7 +2923,7 @@ function renderSavedViews() {
   const select = $("#savedViews");
   const names = Object.keys(state.savedViews || {});
   select.innerHTML = `<option value="">Saved views…</option>` +
-    names.map(name => `<option value="${name}">${name}</option>`).join("");
+    names.map(name => `<option value="${esc(name)}">${esc(name)}</option>`).join("");
   select.disabled = names.length === 0;
 }
 
@@ -3196,6 +3216,10 @@ document.addEventListener("keydown", event => {
   if (query.get("engine")) {
     $("#engineUrl").value = query.get("engine");
     $("#engineToken").value = query.get("token") || "";
+    // Strip the token from the URL before anything else happens: a token in the
+    // address bar is in the history, in a screenshot, and in the Referer header
+    // of any outbound link the page sends.
+    history.replaceState(null, "", location.pathname + location.hash);
     // a deep link into a deal or a record resolves before the engine is
     // connected, so the route has to be applied again once it is
     connectEngine().then(() => applyRoute());

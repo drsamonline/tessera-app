@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.24.0] - 2026-11-15
+
+### Security
+
+- **Stored XSS, fixed.** Twenty-three interpolations of record, company, deal and note data into `innerHTML` were
+  unescaped. A CSV with `<img src=x onerror=...>` in a name column executed on import, in the origin holding the bearer
+  token. One `esc()` helper, applied everywhere. Proven: a hostile name now renders as escaped text and no `<img>`
+  element exists in the body.
+- **The token no longer sits in the address bar.** It is stripped with `history.replaceState` before the connection,
+  and the one outbound link gained `rel="noopener noreferrer" referrerpolicy="no-referrer"` — the `Referer` header was
+  sending the token to a third party.
+- **A Content-Security-Policy**, with `object-src`, `base-uri`, `form-action` and `frame-ancestors` all closed.
+
+### Fixed
+
+- CSV import is capped at 2 MB. A 200 MB paste froze the tab silently.
+
+### Added
+
+- **[REVIEW.md](REVIEW.md)** — eight findings with file and line, the failing case for each, and a ship-or-block
+  verdict. Four fixed here; four accepted with reasons.
+
+### The honest limit of the CSP
+
+`script-src` still allows `'unsafe-inline'` because the app is one inline script. Splitting it into a file is a
+build-step change, and until that happens the CSP is defence in depth behind `esc()`, not a substitute for it.
+
 ## [1.23.0] - 2026-11-15
 
 ### Added
