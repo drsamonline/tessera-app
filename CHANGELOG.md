@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.22.0] - 2026-11-15
+
+### Added
+
+- **Pipeline board.** Deals as columns by stage, each column carrying its count and value. A card opens the deal; the
+  arrow moves it to the next stage and writes that to the system of record — `POST /v1/objects/Deal/{id}/fields/stage`
+  — with an undo that writes the old stage back.
+- Verified: moving *Acme renewal* from `proposal` to `negotiation` returned `negotiation` via node `hubspot`, and the
+  board re-rendered as `proposal 0 · ₹0.00`, `negotiation 2 · ₹1,65,000.00`.
+
+### Why a board and not a table
+
+A pipeline is the one CRM screen where the shape of the data is the point: how much sits at each stage. A table sorted
+by stage answers it slowly; columns answer it at a glance. It is also the first screen that writes a *Deal* field
+rather than a Contact one, which is what stops the console being a contact viewer with extras.
+
 ## [1.21.0] - 2026-11-15
 
 ### Added

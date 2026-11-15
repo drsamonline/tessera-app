@@ -46,6 +46,7 @@ shows **where every value came from**, and records the whole thing in a hash cha
 | **Automate** | A workflow written by an agent is a proposal. The run button is disabled until a person approves it. |
 | **Tombstone** | Deleting asks for a reason first. The record stops being served; the reason and the deletion stay in the chain |
 | **Related** | On a record: its company (click to see everyone at it) and that company's deals. A deal opens with the same per-field provenance a contact gets |
+| **Pipeline** | Deals as columns by stage, with the value in each. A card opens the deal; the arrow moves it and writes the new stage to the system of record |
 | **Report** | Contacts, open conflicts, deals and pipeline value; pipeline by stage; which system supplied what share of the data; per-record completeness |
 | **Settings** | Theme, density, live storage report, a one-file **workspace backup**, and an **engine connection** — point it at a running TESSERA API and the Records list comes from it. |
 

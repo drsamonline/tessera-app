@@ -84,6 +84,23 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .card .body{padding:14px}
 
 /* record head */
+.board{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;align-items:flex-start}
+.col{flex:0 0 236px;background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--r-lg);overflow:hidden}
+.col > header{display:flex;justify-content:space-between;align-items:baseline;
+  padding:10px 12px;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.07em}
+.col > header b{color:var(--text);font-size:12px;letter-spacing:0}
+.col .cards{padding:8px;display:flex;flex-direction:column;gap:8px;min-height:44px}
+.dcard{background:var(--raise);border:1px solid var(--line-control);border-radius:var(--r);
+  padding:10px 12px;text-align:left;width:100%}
+.dcard:hover{border-color:var(--accent)}
+.dcard b{display:block;font-size:13px;font-weight:600;margin-bottom:4px}
+.dcard .amt{font-family:var(--mono);font-size:12px;color:var(--accent)}
+.dcard .co{font-size:11px;color:var(--muted);display:block;margin-top:2px}
+.dcard .move{margin-top:8px;font-size:11px;color:var(--muted);border:1px solid var(--line-control);
+  border-radius:999px;padding:3px 10px;min-height:26px}
+.dcard .move:hover{color:var(--accent);border-color:var(--accent)}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:var(--gap)}
 .kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
 .kpi b{display:block;font-size:26px;font-weight:650;letter-spacing:-.02em}
@@ -420,6 +437,9 @@ a{color:var(--accent)}
     <button data-go="automations" title="Automations">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M3 12h4l3 7 4-14 3 7h4"/></svg>
       <span>Automate</span></button>
+    <button data-go="pipeline" title="Pipeline">
+      <span class="ico" aria-hidden="true">▥</span><span>Pipeline</span>
+    </button>
     <button data-go="report" title="Report">
       <span class="ico" aria-hidden="true">▤</span><span>Report</span>
     </button>
@@ -618,6 +638,13 @@ a{color:var(--accent)}
     </section>
 
     <!-- SETTINGS --------------------------------------------------------- -->
+    <section class="view" id="pipeline">
+      <h1>Pipeline</h1>
+      <p class="sub">Deals by stage. A card opens the deal; the arrow moves it and writes the change to the
+        system of record.</p>
+      <div class="board" id="board"></div>
+    </section>
+
     <section class="view" id="report">
       <h1>Report</h1>
       <p class="sub">What is in the system, where it came from, and what is not decided yet.</p>
@@ -731,6 +758,8 @@ a{color:var(--accent)}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><rect x="5" y="3" width="14" height="12"/><path d="M5 15v6M19 15v6"/></svg><span>Work</span></button>
     <button data-go="automations">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M3 12h4l3 7 4-14 3 7h4"/></svg><span>Automate</span></button>
+    <button data-go="pipeline">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="13" rx="1"/></svg><span>Pipeline</span></button>
     <button data-go="report">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span>Report</span></button>
     <button data-go="settings">
@@ -1794,6 +1823,78 @@ function renderConnectors() {
   }).join("");
 }
 
+const STAGE_ORDER = ["scoping", "proposal", "negotiation", "closed_won", "closed_lost"];
+
+function renderPipeline() {
+  const board = $("#board");
+  if (!board) return;
+  const deals = state.engineDeals || [];
+  if (!deals.length) {
+    board.innerHTML = `<p class="note">${state.engine && state.engine.live
+      ? "No deals on this tenant yet." : "Connect an engine to read deals."}</p>`;
+    return;
+  }
+  const stages = STAGE_ORDER.concat(deals.map(deal => deal.stage || "unknown")
+    .filter(stage => !STAGE_ORDER.includes(stage)));
+  board.innerHTML = [...new Set(stages)].map(stage => {
+    const inStage = deals.filter(deal => (deal.stage || "unknown") === stage);
+    const total = inStage.reduce((sum, deal) => sum + (deal.amount_minor || 0), 0);
+    const next = STAGE_ORDER[STAGE_ORDER.indexOf(stage) + 1];
+    return `<div class="col">
+      <header><b>${stage.replace(/_/g, " ")}</b><span>${inStage.length} · ${formatValue("amount_minor", total)}</span></header>
+      <div class="cards">
+        ${inStage.map(deal => {
+          const company = (state.engineCompanies || [])
+            .find(item => `Company:${item.id}` === deal.company_ref);
+          return `<div class="dcard">
+            <b>${deal.name}</b>
+            <span class="amt">${formatValue("amount_minor", deal.amount_minor || 0)}</span>
+            <span class="co">${company ? company.name : ""}</span>
+            <div class="row" style="margin-top:8px;gap:6px">
+              <button class="move" data-open="${deal.id}">Open</button>
+              ${next ? `<button class="move" data-move="${deal.id}|${next}">→ ${next.replace(/_/g, " ")}</button>` : ""}
+            </div>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>`;
+  }).join("");
+  $$("[data-open]", board).forEach(button =>
+    button.onclick = () => openDeal(button.dataset.open));
+  $$("[data-move]", board).forEach(button => button.onclick = async () => {
+    const [dealId, stage] = button.dataset.move.split("|");
+    await moveDeal(dealId, stage);
+  });
+}
+
+async function moveDeal(dealId, stage) {
+  if (!(state.engine && state.engine.live)) { toast("Connect an engine first"); return; }
+  const deal = (state.engineDeals || []).find(item => item.id === dealId);
+  const before = deal ? deal.stage : null;
+  const response = await fetch(`${state.engine.url}/v1/objects/Deal/${dealId}/fields/stage`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${state.engine.token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ value: stage }),
+  }).catch(() => null);
+  if (!response || !response.ok) {
+    const payload = response ? await response.json().catch(() => ({})) : {};
+    toast(payload.detail || "Could not move the deal");
+    return;
+  }
+  await loadEngineDeals();
+  renderPipeline(); renderReport();
+  toast(`${deal ? deal.name : "Deal"} → ${stage.replace(/_/g, " ")}`, async () => {
+    await fetch(`${state.engine.url}/v1/objects/Deal/${dealId}/fields/stage`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${state.engine.token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ value: before }),
+    });
+    await loadEngineDeals();
+    renderPipeline(); renderReport();
+    toast("Moved back — the change stays in the chain");
+  });
+}
+
 function renderRelated() {
   const host = $("#related");
   if (!host) return;
@@ -2152,7 +2253,8 @@ function renderAll() {
   $("#printMeta").textContent =
     `${record.name} · ${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC · ` +
     `chain head ${head}… · ${Object.keys(record.fields).filter(isConflict).length} open conflict(s)`;
-  renderRecords(); renderConnectors(); renderNotes(); renderRelated(); renderReport();
+  renderRecords(); renderConnectors(); renderNotes(); renderRelated();
+  renderPipeline(); renderReport();
   renderFields(); renderTimeline(); renderRules(); renderConflicts(); renderLedger(); renderSeats();
   renderRouting(); renderWorkflows();
   $("#storageNote").textContent =
@@ -2214,6 +2316,7 @@ function palCommands() {
     { label: "Go to Ledger", kind: "go", run: () => go("ledger") },
     { label: "Go to Workforce", kind: "go", run: () => go("workforce") },
     { label: "Go to Automate", kind: "go", run: () => go("automations") },
+    { label: "Go to Pipeline", kind: "go", run: () => go("pipeline") },
     { label: "Go to Report", kind: "go", run: () => go("report") },
     { label: "Go to Settings", kind: "go", run: () => go("settings") },
     { label: "Import a CSV", kind: "action", run: () => { closePalette(); openImport(); } },
