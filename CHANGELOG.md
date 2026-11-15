@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.19.0] - 2026-11-15
+
+### Added
+
+- **Tombstone.** The delete action on a record asks for a reason before it will submit, then calls
+  `DELETE /v1/objects/Contact/{id}`. The record leaves the list, the reason stays on the record, and the toast says
+  *tombstoned* rather than *deleted* — one of those is true.
+- Verified against a standalone engine: three contacts, a delete through the sheet's exact call, `200`, list drops to
+  two.
+
+### Why the word matters
+
+Nothing is destroyed. An append-only chain cannot un-write a hash, so "delete" here means the record stops being
+served and the deletion is attributable. Calling that a delete would be the small lie that costs trust the first time
+someone asks for the bytes.
+
+### Complete CRUD
+
+Create, read, update, delete — all four now exist against the engine, and every one of them is an event.
+
 ## [1.18.0] - 2026-11-15
 
 ### Added

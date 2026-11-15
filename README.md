@@ -44,6 +44,7 @@ shows **where every value came from**, and records the whole thing in a hash cha
 | **Ledger** | Every event, SHA-256 chained. **Verify chain** recomputes it locally. **Tamper** proves the verification works. An undo is a new event, never a deleted one. |
 | **Workforce** | Work goes to a position, not a person. The router shows its term-by-term arithmetic. **Assign**, **assign to me**, or **escalate** with a signed packet — each undoable. |
 | **Automate** | A workflow written by an agent is a proposal. The run button is disabled until a person approves it. |
+| **Tombstone** | Deleting asks for a reason first. The record stops being served; the reason and the deletion stay in the chain |
 | **Related** | On a record: its company, and that company's deals with stage and value — the relational spine, read from the engine |
 | **Report** | Contacts, open conflicts, deals and pipeline value; pipeline by stage; which system supplied what share of the data; per-record completeness |
 | **Settings** | Theme, density, live storage report, a one-file **workspace backup**, and an **engine connection** — point it at a running TESSERA API and the Records list comes from it. |

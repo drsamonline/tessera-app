@@ -229,6 +229,11 @@ a{color:var(--accent)}
   border-radius:var(--r-sm);font-size:13.5px;min-height:44px;color:var(--text)}
 .pal-item[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
 .pal-item .kind{margin-left:auto;font-size:10.5px;font-family:var(--mono);opacity:.7}
+#del{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;display:grid;place-items:center;
+  padding:16px;backdrop-filter:blur(2px)}
+#del[hidden]{display:none}
+@media (max-width:640px){#del{place-items:end center;padding:0}
+  #del .sheet{width:100%;border-radius:var(--r-lg) var(--r-lg) 0 0}}
 #mail{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;display:grid;place-items:center;
   padding:16px;backdrop-filter:blur(2px)}
 #mail[hidden]{display:none}
@@ -446,6 +451,7 @@ a{color:var(--accent)}
         <button class="rowaction" id="copyLink">Copy link</button>
         <button class="rowaction" id="printOne">Print record</button>
         <button class="rowaction" id="logMail">Log email</button>
+        <button class="rowaction" id="delRecord">Tombstone</button>
       </div>
 
       <div class="print-only print-head">
@@ -726,6 +732,26 @@ a{color:var(--accent)}
     <input id="palInput" type="text" placeholder="Jump to a customer, or type a command…"
            autocomplete="off" spellcheck="false">
     <div id="palList" role="listbox" aria-label="Commands"></div>
+  </div>
+</div>
+<div id="del" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="delTitle">
+    <div class="sheet-head">
+      <b id="delTitle">Tombstone this record</b>
+      <button class="iconbtn" id="delClose" aria-label="Close">✕</button>
+    </div>
+    <div class="sheet-body">
+      <p class="note" style="margin:0 0 12px">The record stops being served and the reason is kept next to the
+        tombstone, forever. Nothing is destroyed — the ledger keeps what was written, because an append-only chain
+        cannot un-write a hash.</p>
+      <label class="field"><span>Reason (required)</span>
+        <input id="delReason" placeholder="duplicate of an existing contact" autocomplete="off"></label>
+      <p class="note" id="delStatus"></p>
+      <div class="row" style="margin-top:10px">
+        <button class="btn primary" id="delConfirm">Tombstone</button>
+        <button class="btn" id="delCancel">Cancel</button>
+      </div>
+    </div>
   </div>
 </div>
 <div id="mail" hidden>
@@ -2142,6 +2168,7 @@ document.addEventListener("keydown", event => {
     if (!$("#new").hidden) closeSheet("#new");
     if (!$("#edit").hidden) closeSheet("#edit");
     if (!$("#mail").hidden) closeSheet("#mail");
+    if (!$("#del").hidden) closeSheet("#del");
   }
 });
 
@@ -2221,6 +2248,54 @@ $("#palInput").onkeydown = event => {
   if (event.key === "Enter") { event.preventDefault(); runPalette(palIndex); }
 };
 $("#pal").onclick = event => { if (event.target.id === "pal") closePalette(); };
+
+/* ---- tombstone a record --------------------------------------------------- */
+function openDelete() {
+  $("#delStatus").textContent = "";
+  $("#delReason").value = "";
+  openSheet("#del");
+  $("#delReason").focus();
+}
+
+async function confirmDelete() {
+  const status = $("#delStatus");
+  const reason = ($("#delReason").value || "").trim();
+  if (!reason) { status.textContent = "A reason is required."; return; }
+  if (!(state.engine && state.engine.live)) {
+    status.textContent = "Connect an engine first — a tombstone has to be recorded where the record lives.";
+    return;
+  }
+  status.textContent = "Tombstoning…";
+  try {
+    const response = await fetch(`${state.engine.url}/v1/objects/Contact/${state.selected}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${state.engine.token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ reason }),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      status.textContent = payload.detail || payload.error || `Failed: ${response.status}`;
+      return;
+    }
+    const name = activeRecord().name;
+    closeSheet("#del");
+    await loadEngineRecords();
+    state.selected = (state.engineRecords[0] || {}).id || state.selected;
+    RECORD = activeRecord().fields;
+    ACTIVITY = activeRecord().activity;
+    save();
+    renderAll();
+    go("records");
+    toast(`${name} tombstoned — the reason is on the record`);
+  } catch (error) {
+    status.textContent = `Could not tombstone: ${error.message}`;
+  }
+}
+
+$("#delClose").onclick = () => closeSheet("#del");
+$("#delCancel").onclick = () => closeSheet("#del");
+$("#delConfirm").onclick = confirmDelete;
+$("#del").onclick = event => { if (event.target.id === "del") closeSheet("#del"); };
 
 /* ---- log an email -------------------------------------------------------- */
 function openMail() {
@@ -2563,7 +2638,7 @@ $("#impFile").onchange = event => {
   reader.readAsText(file);
 };
 
-["#hist", "#imp", "#pal", "#new", "#edit", "#mail"].forEach(id => trapFocus($(id)));
+["#hist", "#imp", "#pal", "#new", "#edit", "#mail", "#del"].forEach(id => trapFocus($(id)));
 
 /* ---- navigation --------------------------------------------------------- */
 function go(view, recordId) {
@@ -2739,6 +2814,7 @@ $("#reloadNow").onclick = () => {
 };
 
 $("#logMail").onclick = openMail;
+$("#delRecord").onclick = openDelete;
 
 $("#printOne").onclick = () => {
   enqueue("record.printed", "human", { record: state.selected });
