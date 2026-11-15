@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.26.0] - 2026-11-15
+
+### Security
+
+- **The first escaping pass was incomplete, and a scanner found the rest.** 23 sites were fixed by hand; a template-aware
+  scan found **64 more** — `record.role`, `record.company`, `email`, `event.actor`, `seat.name`, `flow.name`,
+  `item.label`, `company.domain` inside a nested template, `error.message`, and every `data-*` attribute carrying an id.
+  All reachable from a record, an engine response or an imported file. All wrapped.
+
+### Added
+
+- **`scripts/check_app.py`** — eight static gates: escaping inside `innerHTML` templates (by walking template literals,
+  not by regex), the CSP, no inline handlers, an external script, the service-worker shell, the manifest, the import cap,
+  and the external hosts the privacy document names.
+- **CI** (`.github/workflows/ci.yml`): `node --check` on both scripts, the static gates, a VERSION/CHANGELOG check, the
+  accessibility harness in a real browser, and a fail on any CSP violation.
+
+### Proven to fail
+
+The checker was run against a copy with `${esc(record.name)}` reverted to `${record.name}`: **exit 1, one problem
+named.** A check that cannot fail is not a check.
+
+### Verified after the change
+
+Ten records, eight field rows, five ledger rows, four KPIs, all eight views active, no JavaScript errors, no CSP
+violations.
+
 ## [1.25.0] - 2026-11-15
 
 ### Changed

@@ -37,7 +37,16 @@ breaks. Anything I could not point at was dropped rather than listed.
 in the name column executes on import, in the origin that holds the bearer token. Importing a file somebody sent you is
 the whole attack. It is stored, so it re-fires on every reload.
 
-**Fix.** One `esc()` helper, applied at every interpolation of data — 23 sites. **Proof, run:** a record created with
+**Fix, in two passes.** One `esc()` helper, then a second pass because the first was incomplete.
+
+The first pass covered 23 sites — the ones a grep found by looking for `record.name`. A scanner that actually tracks
+template literals then found **64 more**: `record.role`, `record.company`, `email`, `event.actor`, `seat.name`,
+`flow.name`, `item.label`, `company.domain` inside a nested template, `error.message`, and every `data-*` attribute
+carrying an id. All are reachable from a record, an engine response or an imported file.
+
+**That is the finding under the finding:** a review that greps for the pattern you already know is a review that finds
+only what you already knew. `scripts/check_app.py` now does this on every push, and it walks the source rather than
+matching a regex. **Proof, run:** a record created with
 `<img src=x onerror="window.__pwned=1">` as its name now renders as
 
 ```

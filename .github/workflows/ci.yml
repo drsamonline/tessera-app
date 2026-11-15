@@ -1,0 +1,82 @@
+name: CI
+
+# The app has no build step, so CI is not a build: it is the checks that stop the
+# mistakes this repository has actually made - an unescaped interpolation, a CSP
+# that allowed inline script, an import with no size limit - from reaching main.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  static:
+    name: Static checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: JavaScript parses
+        run: node --check app.js
+
+      - name: Service worker parses
+        run: node --check sw.js
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Escaping, CSP, shell, manifest, limits
+        run: python3 scripts/check_app.py
+
+      - name: VERSION matches the top changelog entry
+        run: |
+          version=$(cat VERSION)
+          head -20 CHANGELOG.md | grep -q "\[$version\]" \
+            || { echo "VERSION is $version and CHANGELOG.md has no entry for it"; exit 1; }
+
+  browser:
+    name: Accessibility harness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Serve the directory
+        run: |
+          python3 -m http.server 8080 --bind 127.0.0.1 &
+          sleep 1
+
+      - name: Run the harness in a real browser
+        run: |
+          google-chrome --headless=new --no-sandbox --disable-gpu \
+            --virtual-time-budget=20000 --dump-dom \
+            http://127.0.0.1:8080/tests/a11y-harness.html > /tmp/dom.html
+          python3 - <<'PY'
+          import re, sys
+          dom = open("/tmp/dom.html", encoding="utf-8").read()
+          result = re.search(r'<pre id="out">(.*?)</pre>', dom, re.S)
+          if not result:
+              print("the harness did not report — it crashed or never ran")
+              sys.exit(1)
+          report = result.group(1)
+          print(report)
+          failures = [line for line in report.splitlines() if line.startswith("FAIL")]
+          sys.exit(1 if failures else 0)
+          PY
+
+      - name: No CSP violations
+        run: |
+          google-chrome --headless=new --no-sandbox --disable-gpu \
+            --enable-logging=stderr --log-level=0 --virtual-time-budget=10000 \
+            --dump-dom http://127.0.0.1:8080/index.html > /dev/null 2> /tmp/chrome.log
+          if grep -q "Content Security Policy\|Refused to" /tmp/chrome.log; then
+            echo "the browser refused something the policy forbids:"
+            grep "Content Security Policy\|Refused to" /tmp/chrome.log
+            exit 1
+          fi
+          echo "no CSP violations"

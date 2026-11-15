@@ -473,7 +473,7 @@ async function connectEngine() {
   } catch (error) {
     state.engine = { url, token, live: false };
     save();
-    status.textContent = `Could not connect: ${error.message}. A CORS refusal looks identical to a refused ` +
+    status.textContent = `Could not connect: ${esc(error.message)}. A CORS refusal looks identical to a refused ` +
       `connection from here — check the engine's allowlist includes this origin.`;
   }
   renderEngineChip();
@@ -741,23 +741,23 @@ function renderRecords() {
 
   const host = $("#recordList");
   if (!matches.length) {
-    host.innerHTML = `<p class="empty">No record matches “${query}”.</p>`;
+    host.innerHTML = `<p class="empty">No record matches “${esc(query)}”.</p>`;
     return;
   }
   host.innerHTML = matches.map(record => {
     const conflicts = conflictsIn(record);
     const initials = record.name.split(" ").map(part => part[0]).join("").slice(0, 2);
     const email = currentValueFor(record, "email");
-    return `<button class="rec" data-open="${record.id}" ${record.id === state.selected ? 'aria-current="true"' : ""}>
-      <span class="av" aria-hidden="true">${initials}</span>
+    return `<button class="rec" data-open="${esc(record.id)}" ${record.id === state.selected ? 'aria-current="true"' : ""}>
+      <span class="av" aria-hidden="true">${esc(initials)}</span>
       <span>
         <span class="nm">${esc(record.name)}</span>
-        <span class="meta">${record.role} · ${record.company}<br>${email}</span>
+        <span class="meta">${esc(record.role)} · ${esc(record.company)}<br>${esc(email)}</span>
       </span>
       <span class="right">
         ${conflicts ? `<span class="chip warn">${conflicts} conflict${conflicts > 1 ? "s" : ""}</span>`
                     : `<span class="chip ok">agrees</span>`}
-        <span class="chip">${record.health}</span>
+        <span class="chip">${esc(record.health)}</span>
       </span>
     </button>`;
   }).join("");
@@ -836,7 +836,7 @@ function renderReport() {
     ["Pipeline", deals.length
       ? formatValue("amount_minor", deals.reduce((sum, deal) => sum + (deal.amount_minor || 0), 0))
       : "—"],
-  ].map(([label, value]) => `<div class="kpi"><b>${value}</b><span>${label}</span></div>`).join("");
+  ].map(([label, value]) => `<div class="kpi"><b>${esc(value)}</b><span>${esc(label)}</span></div>`).join("");
 
   // pipeline by stage, drawn with divs: a chart library for five bars is a dependency
   const byStage = {};
@@ -886,7 +886,7 @@ function renderReport() {
 function renderConnectors() {
   $("#connectors").innerHTML = Object.values(NODES).map(node => {
     const status = connectorState(node);
-    const ago = node.lastSync === 0 ? "now" : `${node.lastSync}m ago`;
+    const ago = node.lastSync === 0 ? "now" : `${esc(node.lastSync)}m ago`;
     return `<span class="conn ${status.state === "ok" ? "" : status.state}"
       title="${node.label}: last sync ${ago}, ${node.errors} error(s)">
       <span class="dot" aria-hidden="true"></span>
@@ -919,14 +919,14 @@ function renderPipeline() {
       <div class="cards">
         ${inStage.map(deal => {
           const company = (state.engineCompanies || [])
-            .find(item => `Company:${item.id}` === deal.company_ref);
+            .find(item => `Company:${esc(item.id)}` === deal.company_ref);
           return `<div class="dcard">
             <b>${esc(deal.name)}</b>
             <span class="amt">${formatValue("amount_minor", deal.amount_minor || 0)}</span>
             <span class="co">${company ? esc(company.name) : ""}</span>
             <div class="row" style="margin-top:8px;gap:6px">
-              <button class="move" data-open="${deal.id}">Open</button>
-              ${next ? `<button class="move" data-move="${deal.id}|${next}">→ ${next.replace(/_/g, " ")}</button>` : ""}
+              <button class="move" data-open="${esc(deal.id)}">Open</button>
+              ${next ? `<button class="move" data-move="${esc(deal.id)}|${next}">→ ${next.replace(/_/g, " ")}</button>` : ""}
             </div>
           </div>`;
         }).join("")}
@@ -977,7 +977,7 @@ function renderRelated() {
     ? Object.values(record.fields.company_ref)[0] : null;
   const companies = state.engineCompanies || [];
   const company = companyRef
-    ? companies.find(item => `Company:${item.id}` === companyRef) : null;
+    ? companies.find(item => `Company:${esc(item.id)}` === companyRef) : null;
   const deals = (state.engineDeals || []).filter(deal =>
     companyRef && deal.company_ref === companyRef);
 
@@ -990,10 +990,10 @@ function renderRelated() {
       <span class="mono" style="font-size:11px;color:var(--muted)">COMPANY</span>
       <button class="linkish" data-company="${esc(company ? company.name : companyRef)}"
         title="Show every record at this company">${esc(company ? company.name : companyRef)}</button>
-      ${company && company.domain ? `<span class="note">${company.domain}</span>` : ""}
+      ${company && company.domain ? `<span class="note">${esc(company.domain)}</span>` : ""}
     </div>
     ${deals.length ? deals.map(deal => `
-      <button class="row" data-deal="${deal.id}" style="margin:6px 0;width:100%;text-align:left;
+      <button class="row" data-deal="${esc(deal.id)}" style="margin:6px 0;width:100%;text-align:left;
         border-radius:8px;padding:6px 8px" title="Open this deal">
         <span class="mono" style="font-size:11px;color:var(--muted);min-width:64px">DEAL</span>
         <span>${esc(deal.name)}</span>
@@ -1024,7 +1024,7 @@ function renderNotes() {
     !retracted.has(event.payload.note));
   host.innerHTML = notes.length
     ? notes.slice().reverse().map(event => `
-        <li><time>#${event.seq} · ${event.actor}</time><p>${esc(event.payload.text)}</p></li>`).join("")
+        <li><time>#${esc(event.seq)} · ${esc(event.actor)}</time><p>${esc(event.payload.text)}</p></li>`).join("")
     : `<li style="border-left-color:transparent;padding-left:0"><p class="note">
          No notes on this record. A note is a ledger event, so it is as durable as everything else.</p></li>`;
 }
@@ -1064,7 +1064,7 @@ async function resolveFieldTo(field, node) {
   save();
   await enqueue("conflict.resolved", "human", { field, winner: node });
   renderAll();
-  toast(`Kept ${nodeInfo(node).label} for ${field.replace(/_/g, " ")}`, async () => {
+  toast(`Kept ${nodeInfo(node).label} for ${esc(field.replace(/_/g, " "))}`, async () => {
     if (before === undefined) delete state.resolved[key];
     else state.resolved[key] = before;
     save();
@@ -1104,9 +1104,9 @@ function renderRules() {
   box.innerHTML = `<div class="item" style="margin-bottom:12px">
     <div class="top"><b>Your standing rules</b><span class="chip">applied to every record</span></div>
     ${fields.map(field => `<div class="row" style="margin:6px 0">
-      <span class="mono">${field.replace(/_/g, " ")}</span>
-      <span class="chip ok">always ${nodeInfo(rules[field]).label}</span>
-      <button class="btn small ghost" data-unrule="${field}">Remove</button>
+      <span class="mono">${esc(field.replace(/_/g, " "))}</span>
+      <span class="chip ok">always ${esc(nodeInfo(rules[field]).label)}</span>
+      <button class="btn small ghost" data-unrule="${esc(field)}">Remove</button>
     </div>`).join("")}
   </div>`;
   $$("[data-unrule]", box).forEach(button => button.onclick = () => {
@@ -1139,20 +1139,20 @@ function renderConflicts() {
     const resolution = resolveField(field, RECORD[field], authority);
     return `<div class="item">
       <div class="top">
-        <b>${field.replace(/_/g, " ")}</b>
-        <span class="chip">rule: ${resolution.rule}</span>
+        <b>${esc(field.replace(/_/g, " "))}</b>
+        <span class="chip">rule: ${esc(resolution.rule)}</span>
       </div>
       ${entries.map(([node, value]) => {
         const isCurrent = canonicalJSON(value) === canonicalJSON(currentValue(field).value);
         return `<div class="row" style="margin:6px 0">
           <span class="val">${formatValue(field, value)}</span>
           <span class="chip ${isCurrent ? "ok" : "warn"}">${isCurrent ? "current" : "changes"}</span>
-          <span class="mono">${esc(nodeInfo(node).label)} · trust ${nodeInfo(node).trust.toFixed(2)}</span>
-          <button class="btn small" data-pick="${field}|${node}">${isCurrent ? "Keep" : "Change to this"}</button>
-          <button class="btn small ghost" data-always="${field}|${node}" title="Use this system for this field on every record">Always</button>
+          <span class="mono">${esc(nodeInfo(node).label)} · trust ${esc(nodeInfo(node).trust.toFixed(2))}</span>
+          <button class="btn small" data-pick="${esc(field)}|${esc(node)}">${isCurrent ? "Keep" : "Change to this"}</button>
+          <button class="btn small ghost" data-always="${esc(field)}|${esc(node)}" title="Use this system for this field on every record">Always</button>
         </div>`;
       }).join("")}
-      <div class="note">The engine would take <b>${nodeInfo(resolution.node).label}</b> by ${resolution.rule}.</div>
+      <div class="note">The engine would take <b>${esc(nodeInfo(resolution.node).label)}</b> by ${esc(resolution.rule)}.</div>
     </div>`;
   }).join("");
   $$("[data-pick]", host).forEach(btn => {
@@ -1169,7 +1169,7 @@ function renderConflicts() {
       save();
       await enqueue("rule.saved", "human", { field, source: node });
       renderAll();
-      toast(`Rule saved: ${field.replace(/_/g, " ")} always from ${nodeInfo(node).label}`, async () => {
+      toast(`Rule saved: ${esc(field.replace(/_/g, " "))} always from ${nodeInfo(node).label}`, async () => {
         state.rules = before;
         save();
         await enqueue("rule.removed", "human", { field });
@@ -1187,11 +1187,11 @@ function renderLedger() {
     return;
   }
   host.innerHTML = state.ledger.map(event => `
-    <tr data-seq="${event.seq}">
-      <td class="mono">${event.seq}</td>
-      <td>${event.action}</td>
-      <td class="mono">${event.actor}</td>
-      <td class="hash">${event.hash.slice(0, 12)}…</td>
+    <tr data-seq="${esc(event.seq)}">
+      <td class="mono">${esc(event.seq)}</td>
+      <td>${esc(event.action)}</td>
+      <td class="mono">${esc(event.actor)}</td>
+      <td class="hash">${esc(event.hash.slice(0, 12))}…</td>
     </tr>`).join("");
 }
 
@@ -1205,11 +1205,11 @@ function renderSeats() {
   $("#seats").innerHTML = SEATS.map(seat => `
     <div class="seat">
       <div>
-        <b>${seat.name}</b>
-        <div class="occ">${seat.occupant} · ${seat.kind} · trust ${seat.trust.toFixed(2)}</div>
+        <b>${esc(seat.name)}</b>
+        <div class="occ">${esc(seat.occupant)} · ${esc(seat.kind)} · trust ${seat.trust.toFixed(2)}</div>
         <div class="bar-track"><div class="bar-fill" style="width:${seat.load * 100}%"></div></div>
       </div>
-      <span class="chip ${seat.kind === "agent" ? "warn" : "ok"}">${seat.kind}</span>
+      <span class="chip ${seat.kind === "agent" ? "warn" : "ok"}">${esc(seat.kind)}</span>
     </div>`).join("");
 }
 
@@ -1232,11 +1232,11 @@ function renderRouting() {
   host.innerHTML = rows.map((row, index) => `
     <div class="item">
       <div class="top">
-        <b>${index + 1}. ${row.seat.name}</b>
+        <b>${index + 1}. ${esc(row.seat.name)}</b>
         <span class="chip ${index === 0 ? "ok" : ""}">${row.score.toFixed(3)}</span>
       </div>
-      <div class="mono">${row.seat.occupant} · ${row.seat.kind}</div>
-      ${index === 0 ? `<div class="breakdown">${row.lines.join("\n")}</div>` : ""}
+      <div class="mono">${esc(row.seat.occupant)} · ${esc(row.seat.kind)}</div>
+      ${index === 0 ? `<div class="breakdown">${esc(row.lines.join("\n"))}</div>` : ""}
     </div>`).join("");
 
   if (state.assigned) {
@@ -1273,17 +1273,17 @@ function renderWorkflows() {
     const enabled = state.workflowEnabled[flow.id] !== false;
     return `<div class="item">
       <div class="top">
-        <b>${flow.name}</b>
+        <b>${esc(flow.name)}</b>
         <span class="chip ${flow.approved ? "ok" : "warn"}">${flow.approved ? "approved" : "proposal — not executable"}</span>
       </div>
-      <div class="mono">when ${flow.condition}</div>
+      <div class="mono">when ${esc(flow.condition)}</div>
       <div class="row" style="margin-top:10px">
-        ${flow.actions.map(a => `<span class="chip">${a}</span>`).join("")}
+        ${flow.actions.map(a => `<span class="chip">${esc(a)}</span>`).join("")}
       </div>
       <div class="row" style="margin-top:12px">
-        <button class="btn small ${flow.approved ? "primary" : ""}" data-run="${flow.id}" ${flow.approved ? "" : "disabled"}>
+        <button class="btn small ${flow.approved ? "primary" : ""}" data-run="${esc(flow.id)}" ${flow.approved ? "" : "disabled"}>
           ${flow.approved ? "Fire event" : "Approve first"}</button>
-        <button class="btn small ghost" data-toggle="${flow.id}">${enabled ? "Disable" : "Enable"}</button>
+        <button class="btn small ghost" data-toggle="${esc(flow.id)}">${enabled ? "Disable" : "Enable"}</button>
         <span class="mono">condition ${fires ? "matches this record" : "does not match"}</span>
       </div>
     </div>`;
@@ -1293,7 +1293,7 @@ function renderWorkflows() {
     const flow = WORKFLOWS.find(f => f.id === btn.dataset.run);
     if (!evaluateCondition(flow.condition, RECORD)) { toast("Condition does not match this record"); return; }
     await enqueue("workflow.fired", "system", { workflow: flow.id, actions: flow.actions.length });
-    toast(`${flow.name}: ${flow.actions.length} actions ran`, async () => {
+    toast(`${esc(flow.name)}: ${flow.actions.length} actions ran`, async () => {
       await enqueue("workflow.reverted", "human", { workflow: flow.id });
       toast("Run reverted - the firing stays in the chain");
     });
@@ -1319,9 +1319,9 @@ function renderAll() {
   const record = activeRecord();
   $("#recordName").textContent = record.name;
   $("#recordTitle").textContent = record.name;
-  $("#recordSubtitle").textContent = `${record.role} · ${record.company}`;
+  $("#recordSubtitle").textContent = `${esc(record.role)} · ${esc(record.company)}`;
   $("#recordAvatar").textContent = record.name.split(" ").map(p => p[0]).join("").slice(0, 2);
-  $("#healthChip").textContent = `Relationship health ${record.health}`;
+  $("#healthChip").textContent = `Relationship health ${esc(record.health)}`;
   const head = state.ledger && state.ledger.length
     ? state.ledger[state.ledger.length - 1].hash.slice(0, 16) : "not built";
   $("#printMeta").textContent =
@@ -1348,8 +1348,8 @@ function openHistory(field) {
   const rows = events.length
     ? events.map(event => `
         <div class="hrow">
-          <span class="when">#${event.seq} · ${event.actor}</span>
-          <span class="what">${event.action}
+          <span class="when">#${esc(event.seq)} · ${esc(event.actor)}</span>
+          <span class="what">${esc(event.action)}
             <span class="val">${event.payload.value !== undefined ? event.payload.value : (event.payload.winner || "")}</span>
             <span class="mono"> ${event.hash.slice(0, 10)}…</span>
           </span>
@@ -1423,16 +1423,16 @@ function closePalette() {
 function renderPalette(query) {
   const needle = query.trim().toLowerCase();
   palItems = palCommands().filter(item =>
-    !needle || `${item.label} ${item.hint || ""}`.toLowerCase().includes(needle)).slice(0, 40);
+    !needle || `${esc(item.label)} ${item.hint || ""}`.toLowerCase().includes(needle)).slice(0, 40);
   palIndex = 0;
   $("#palList").innerHTML = palItems.length
     ? palItems.map((item, index) => `
       <button class="pal-item" role="option" data-pal="${index}"
         aria-selected="${index === palIndex}">
-        ${item.label}${item.hint ? ` <span class="mono">${item.hint}</span>` : ""}
-        <span class="kind">${item.kind}</span>
+        ${esc(item.label)}${item.hint ? ` <span class="mono">${esc(item.hint)}</span>` : ""}
+        <span class="kind">${esc(item.kind)}</span>
       </button>`).join("")
-    : `<p class="empty">Nothing matches “${query}”.</p>`;
+    : `<p class="empty">Nothing matches “${esc(query)}”.</p>`;
   $$("[data-pal]").forEach(button => button.onclick = () => runPalette(Number(button.dataset.pal)));
 }
 
@@ -1478,7 +1478,7 @@ async function openDeal(dealId) {
     const view = await engineFetch(`/v1/mesh/view/Deal/${dealId}`);
     body.innerHTML = renderDealFields(deal || {}, view);
   } catch (error) {
-    body.innerHTML = `<p class="note">Could not read the deal: ${error.message}</p>`;
+    body.innerHTML = `<p class="note">Could not read the deal: ${esc(error.message)}</p>`;
   }
 }
 
@@ -1499,7 +1499,7 @@ function renderDealFields(deal, view) {
       if (field === "amount_minor") shown = formatValue("amount_minor", value);
       if (field === "company_ref") {
         // a uuid on a customer screen is a database leak, not information
-        const match = (state.engineCompanies || []).find(item => `Company:${item.id}` === value);
+        const match = (state.engineCompanies || []).find(item => `Company:${esc(item.id)}` === value);
         shown = match ? match.name : value;
       }
       return `<div class="frow" style="grid-template-columns:120px minmax(0,1fr) auto">
@@ -1552,7 +1552,7 @@ async function confirmDelete() {
     go("records");
     toast(`${name} tombstoned — the reason is on the record`);
   } catch (error) {
-    status.textContent = `Could not tombstone: ${error.message}`;
+    status.textContent = `Could not tombstone: ${esc(error.message)}`;
   }
 }
 
@@ -1629,7 +1629,7 @@ async function saveEdit() {
   try {
     if (state.engine && state.engine.live) {
       const response = await fetch(
-        `${state.engine.url}/v1/objects/Contact/${state.selected}/fields/${field}`, {
+        `${state.engine.url}/v1/objects/Contact/${state.selected}/fields/${esc(field)}`, {
           method: "POST",
           headers: { Authorization: `Bearer ${state.engine.token}`, "Content-Type": "application/json" },
           body: JSON.stringify({ value: after }),
@@ -1646,7 +1646,7 @@ async function saveEdit() {
       save();
       closeSheet("#edit");
       renderAll();
-      toast(`${field.replace(/_/g, " ")} saved to ${payload.node || "the system of record"}`,
+      toast(`${esc(field.replace(/_/g, " "))} saved to ${payload.node || "the system of record"}`,
             () => revertField(field, before));
     } else {
       const record = activeRecord();
@@ -1654,17 +1654,17 @@ async function saveEdit() {
       save();
       closeSheet("#edit");
       renderAll();
-      toast(`${field.replace(/_/g, " ")} saved in this browser`, () => revertField(field, before));
+      toast(`${esc(field.replace(/_/g, " "))} saved in this browser`, () => revertField(field, before));
     }
   } catch (error) {
-    status.textContent = `Could not save: ${error.message}`;
+    status.textContent = `Could not save: ${esc(error.message)}`;
   }
 }
 
 async function revertField(field, value) {
   try {
     if (state.engine && state.engine.live) {
-      await fetch(`${state.engine.url}/v1/objects/Contact/${state.selected}/fields/${field}`, {
+      await fetch(`${state.engine.url}/v1/objects/Contact/${state.selected}/fields/${esc(field)}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${state.engine.token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ value }),
@@ -1749,7 +1749,7 @@ async function createCustomer() {
       });
     }
   } catch (error) {
-    status.textContent = `Could not create: ${error.message}`;
+    status.textContent = `Could not create: ${esc(error.message)}`;
   }
 }
 
@@ -1823,12 +1823,12 @@ function previewImport() {
 
   $("#impMap").innerHTML = headers.map(header => `
     <div class="mapline">
-      <span class="mono">${header}</span>
+      <span class="mono">${esc(header)}</span>
       <span class="arrow">→</span>
-      <select data-map="${header}">
+      <select data-map="${esc(header)}">
         <option value="">(ignore)</option>
         ${IMPORT_FIELDS.map(field =>
-          `<option value="${field}" ${mapping[header] === field ? "selected" : ""}>${field}</option>`).join("")}
+          `<option value="${esc(field)}" ${mapping[header] === field ? "selected" : ""}>${esc(field)}</option>`).join("")}
       </select>
     </div>`).join("");
 
