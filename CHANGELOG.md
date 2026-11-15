@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.31.0] - 2026-11-15
+
+### Added
+
+- **[DEVELOPMENT.md](DEVELOPMENT.md)** — the status and the gate to leave it: the APK launched on a device, the console
+  driven against a live connector, the seven-item mobile bar resolved, the pencil affordance visible on touch, the four
+  accepted review findings fixed or formally accepted, and the licensing questions answered.
+- **A banner on the README.** The status is now the first thing read rather than a footnote.
+- **Every GitHub release is flagged pre-release**, matching the engine. A build number is not a stability promise.
+
 ## [1.30.0] - 2026-11-15
 
 ### Changed

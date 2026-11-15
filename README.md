@@ -1,3 +1,9 @@
+> ## Status: under development
+>
+> **Not finished, not released.** Published so the work can be inspected, not adopted. Version numbers are build
+> numbers; every GitHub release is flagged pre-release. The gate to leave this state is in
+> [DEVELOPMENT.md](DEVELOPMENT.md).
+
 <div align="center">
 
 <img src="assets/icon.svg" width="88" height="88" alt="TESSERA">
