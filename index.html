@@ -179,7 +179,10 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .frow[data-conflict]{background:color-mix(in srgb,var(--accent) 6%,transparent)}
 .frow[data-conflict] .v{color:var(--accent)}
 .frow[data-conflict] .src{color:var(--accent);opacity:.85}
-button.rowaction{min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--accent);
+.spacer{flex:1 1 auto}
+.rowaction.danger{color:var(--danger);border-color:var(--danger)}
+.rowaction.danger:hover{background:var(--danger);color:var(--bg)}
+.rowaction{min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--accent);
   color:var(--accent);background:transparent;font-size:12px;font-weight:600;white-space:nowrap}
 button.rowaction:hover{background:var(--accent);color:var(--accent-ink)}
 .frow:not([data-conflict]) .rowaction{display:none}
@@ -346,7 +349,10 @@ a{color:var(--accent)}
   .frow .k{grid-area:k;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em}
   .frow .v{grid-area:v}
   .frow .src{grid-area:s;white-space:normal;font-size:10.5px}
-  .frow .rowaction{grid-area:a}
+  .frow .spacer{flex:1 1 auto}
+.rowaction.danger{color:var(--danger);border-color:var(--danger)}
+.rowaction.danger:hover{background:var(--danger);color:var(--bg)}
+.rowaction{grid-area:a}
   .brand b{display:none}
   .ws select{max-width:110px}
   .record{padding:14px}
@@ -484,7 +490,8 @@ a{color:var(--accent)}
         <button class="rowaction" id="copyLink">Copy link</button>
         <button class="rowaction" id="printOne">Print record</button>
         <button class="rowaction" id="logMail">Log email</button>
-        <button class="rowaction" id="delRecord">Tombstone</button>
+        <span class="spacer" aria-hidden="true"></span>
+        <button class="rowaction danger" id="delRecord">Tombstone</button>
       </div>
 
       <div class="print-only print-head">

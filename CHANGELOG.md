@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.27.0] - 2026-11-15
+
+### Changed
+
+- **The Related card no longer contradicts the table above it.** It read only `company_ref` (the engine's shape) and
+  said "No company reference" under a table showing the company. It now reads either, and the copy distinguishes "no
+  deals for this company" from "deals are linked through the engine".
+- **The health score is labelled.** A bare `82` beside "3 conflicts" was an unlabelled number.
+- **Tombstone moved away from the benign actions** — far right, danger colour, separated by a spacer.
+- **Pipeline column headers** read `1 deal · ₹8,000.00` instead of `1 · ₹8,000.00`.
+
+### Fixed
+
+- **The record screen had no action buttons at all**, and nothing said so. A string replace of `.rowaction{` also
+  matched inside two longer selectors, splitting them; the scoped `display:none` became global. Found by screenshotting
+  the design changes — **the accessibility harness passed the whole time**, because the buttons were still in the
+  accessibility tree and still named.
+
+### Added
+
+- **[DESIGN-REVIEW.md](DESIGN-REVIEW.md)** — three screens scored, what works, what does not, and three findings left
+  open on purpose.
+
 ## [1.26.0] - 2026-11-15
 
 ### Security

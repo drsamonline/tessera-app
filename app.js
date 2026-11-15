@@ -757,7 +757,7 @@ function renderRecords() {
       <span class="right">
         ${conflicts ? `<span class="chip warn">${conflicts} conflict${conflicts > 1 ? "s" : ""}</span>`
                     : `<span class="chip ok">agrees</span>`}
-        <span class="chip">${esc(record.health)}</span>
+        <span class="chip" title="Relationship health"><span class="sr">health </span>${esc(record.health)}</span>
       </span>
     </button>`;
   }).join("");
@@ -915,7 +915,8 @@ function renderPipeline() {
     const total = inStage.reduce((sum, deal) => sum + (deal.amount_minor || 0), 0);
     const next = STAGE_ORDER[STAGE_ORDER.indexOf(stage) + 1];
     return `<div class="col">
-      <header><b>${esc(stage.replace(/_/g, " "))}</b><span>${inStage.length} · ${formatValue("amount_minor", total)}</span></header>
+      <header><b>${esc(stage.replace(/_/g, " "))}</b>
+        <span>${inStage.length} deal${inStage.length === 1 ? "" : "s"} · ${formatValue("amount_minor", total)}</span></header>
       <div class="cards">
         ${inStage.map(deal => {
           const company = (state.engineCompanies || [])
@@ -973,23 +974,32 @@ function renderRelated() {
   const host = $("#related");
   if (!host) return;
   const record = activeRecord();
+  // A record from the engine carries `company_ref`; a record created here or
+  // seeded carries `company`. Reading only the ref made this card say "No company
+  // reference" directly under a table showing the company. A card that
+  // contradicts the screen it sits on is worse than no card.
   const companyRef = record.fields && record.fields.company_ref
-    ? Object.values(record.fields.company_ref)[0] : null;
-  const companies = state.engineCompanies || [];
-  const company = companyRef
-    ? companies.find(item => `Company:${esc(item.id)}` === companyRef) : null;
-  const deals = (state.engineDeals || []).filter(deal =>
-    companyRef && deal.company_ref === companyRef);
-
+    ? Object.values(record.fields.company_ref)[0]
+    : (record.fields && record.fields.company
+        ? Object.values(record.fields.company)[0] : null);
   if (!companyRef) {
-    host.innerHTML = `<p class="note">No company reference on this record.</p>`;
+    host.innerHTML = `<p class="note">This record is not linked to a company yet.</p>`;
     return;
   }
+  const isRef = String(companyRef).startsWith("Company:");
+  const companies = state.engineCompanies || [];
+  const company = isRef
+    ? companies.find(item => `Company:${esc(item.id)}` === companyRef) : null;
+  const deals = isRef
+    ? (state.engineDeals || []).filter(deal => deal.company_ref === companyRef)
+    : [];
   host.innerHTML = `
     <div class="row" style="margin:0 0 10px">
       <span class="mono" style="font-size:11px;color:var(--muted)">COMPANY</span>
-      <button class="linkish" data-company="${esc(company ? company.name : companyRef)}"
-        title="Show every record at this company">${esc(company ? company.name : companyRef)}</button>
+      ${isRef
+        ? `<button class="linkish" data-company="${esc(company ? company.name : companyRef)}"
+             title="Show every record at this company">${esc(company ? company.name : companyRef)}</button>`
+        : `<b>${esc(companyRef)}</b>`}
       ${company && company.domain ? `<span class="note">${esc(company.domain)}</span>` : ""}
     </div>
     ${deals.length ? deals.map(deal => `
@@ -1000,7 +1010,7 @@ function renderRelated() {
         <span class="chip">${esc(deal.stage || "unknown")}</span>
         <span class="mono">${formatValue("amount_minor", deal.amount_minor || 0)}</span>
       </button>`).join("")
-      : `<p class="note">No deals for this company.</p>`}`;
+      : `<p class="note">${isRef ? "No deals for this company." : "Deals are linked through the engine."}</p>`}`;
   $$("[data-deal]", host).forEach(button =>
     button.onclick = () => openDeal(button.dataset.deal));
   const companyButton = $("[data-company]", host);
