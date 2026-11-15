@@ -1,6 +1,6 @@
 /* Offline is the point, not a feature. Cache the shell, serve it, done. */
-const CACHE = "tessera-console-v2";
-const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./assets/icon.svg",
+const CACHE = "tessera-console-v3";
+const SHELL = ["./", "./index.html", "./app.js", "./manifest.webmanifest", "./assets/icon.svg",
                "./assets/icon-192.png", "./assets/icon-512.png"];
 
 self.addEventListener("install", event => {

@@ -96,7 +96,7 @@ writes the whole workspace to one file, and **Restore** reads it back.
 | | |
 |---|---|
 | Dependencies | **none** — no framework, no bundler, no build |
-| Payload | one HTML file, 84 KB raw / 22 KB gzipped, plus a service worker and an icon |
+| Payload | `index.html` plus `app.js`, 84 KB raw / 22 KB gzipped, plus a service worker and an icon |
 | Contrast | every text pair measured at **≥ 4.5:1** in both themes |
 | Touch targets | **44px** minimum; the rail becomes a bottom bar under 860px |
 | Keyboard | **⌘K** command palette, **1–7** sections, **/** search, **T** theme, full focus rings |

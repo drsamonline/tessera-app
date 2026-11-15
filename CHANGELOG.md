@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.25.0] - 2026-11-15
+
+### Changed
+
+- **The script moved to `app.js`.** 98 KB of JavaScript out of the HTML, loaded with `<script src="app.js" defer>`. It
+  still works when `index.html` is opened from disk — a classic script in the same directory is not blocked the way a
+  module would be.
+- **`script-src` is now `'self'`.** No `unsafe-inline`. That was the one thing the review said it would not ship
+  without, and it is met.
+
+### Fixed
+
+- **A claim I got wrong.** The CSP carried `frame-ancestors 'none'` in the meta tag and `REVIEW.md` said framing was
+  closed. Chrome: *"The Content Security Policy directive 'frame-ancestors' is ignored when delivered via a `<meta>`
+  element."* It is header-only. The directive is gone, `SECURITY.md` states that clickjacking protection is unavailable
+  on a static host without headers, and the review records the correction.
+
+### Verified
+
+Ten records render, the palette opens, the accessibility harness passes 64/64 with the stricter policy, and the console
+reports **no CSP violations**.
+
 ## [1.24.0] - 2026-11-15
 
 ### Security

@@ -60,14 +60,29 @@ link gains `rel="noopener noreferrer" referrerpolicy="no-referrer"`; the documen
 
 ## H-01 — no CSP
 
-**Fix.** `default-src 'self'`, `script-src 'self' 'unsafe-inline'` (the app is one inline script — splitting it to drop
-`unsafe-inline` is the next step, and it is a build-step change, not a one-liner), `connect-src http: https:` because
-the engine address is user-supplied, `object-src 'none'`, `frame-ancestors 'none'`, `base-uri 'none'`,
-`form-action 'none'`.
+**Fix, in two steps.** First the CSP, then the split that lets it be strict:
 
-**What it does not do.** With `'unsafe-inline'` an injected `<script>` would still run; what the CSP removes is
-`<object>`, framing, `<base>` rewriting, and form exfiltration. It is defence in depth behind `esc()`, not a substitute
-for it.
+| Directive | Value |
+|---|---|
+| `default-src` | `'self'` |
+| `script-src` | **`'self'`** — no `unsafe-inline`, because the script moved to `app.js` |
+| `style-src` | `'self' 'unsafe-inline'` — inline styles remain, and a style injection is not script execution |
+| `connect-src` | `http: https:` — the engine address is user-supplied and cannot be enumerated |
+| `object-src`, `base-uri`, `form-action` | `'none'` |
+| `frame-ancestors` | **not set** — see below |
+
+**A claim I got wrong, and the browser corrected.** I first wrote `frame-ancestors 'none'` into the meta tag and
+recorded that framing was closed. Chrome says otherwise:
+
+> The Content Security Policy directive 'frame-ancestors' is ignored when delivered via a `<meta>` element.
+
+It is a header-only directive. On a static host that sets no headers, **clickjacking protection is unavailable**, and
+the honest thing is to say so rather than ship a directive that does nothing. The app has no destructive one-click
+surface worth framing, which is why this is a note and not a blocker.
+
+**What the CSP still cannot do.** `style-src` allows inline styles; `connect-src` allows any host because the user
+chooses the engine. The load-bearing control is still `esc()` — the CSP is the second line, and it is a real second line
+now that `unsafe-inline` is gone from `script-src`.
 
 ## M-01 — an unbounded paste
 
@@ -101,6 +116,7 @@ for it.
 **Ship**, with C-01, C-02, H-01 and M-01 fixed in this release. The four open findings are documented in
 `SECURITY.md` or accepted above, and none of them is a surprise to a reader of that document.
 
-The one thing I would not ship to a real customer without: **`'unsafe-inline'` in `script-src`.** Splitting the single
-inline script into a file is a build-step change, and it is the difference between a CSP that helps and a CSP that is
-decoration.
+**Updated 15 November:** the script is now `app.js` and `script-src` is `'self'`. That condition is met.
+
+The remaining honest gap is **clickjacking**: `frame-ancestors` cannot be delivered by a meta tag, so a static host
+without headers cannot close it. Stated in `SECURITY.md` rather than left as an assumption.

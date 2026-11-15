@@ -53,6 +53,7 @@ These are targets, not a service commitment. This is a single-maintainer project
 | The bearer token is stored beside the data | Same exposure. It is scoped to the engine you configured |
 | No integrity check on the cached shell beyond the service worker's own | A compromised host serves a compromised app |
 | The Android build is debug-signed | It is for sideloading, not for distribution through a store |
+| **No clickjacking protection** | `frame-ancestors` works only as an HTTP header, and GitHub Pages sets none. The app has no destructive one-click surface, but it can be framed |
 
 ## Testing rules
 
