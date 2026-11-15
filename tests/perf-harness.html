@@ -1,0 +1,78 @@
+<!doctype html><meta charset="utf-8"><title>perf</title>
+<body style="background:#000;color:#0f0;font:12px monospace">
+<pre id="out">measuring…</pre>
+<iframe id="f" src="../index.html" style="width:1200px;height:800px;border:0"></iframe>
+<script>
+/* A single-session lab observation, not field data. It measures this page, in
+   this browser, on this machine — which is enough to catch a regression and not
+   enough to describe a user's experience. */
+const lines = [];
+const say = (ok, msg) => lines.push((ok ? "PASS " : "FAIL ") + msg);
+
+(async () => {
+  const frame = document.getElementById("f");
+  const started = performance.now();
+  await new Promise(r => frame.onload = r);
+  const view = frame.contentWindow;
+
+  let lcp = 0, cls = 0, longTasks = 0, worstTask = 0;
+  const shifts = [];
+  try {
+    new view.PerformanceObserver(list => {
+      for (const entry of list.getEntries()) lcp = Math.max(lcp, entry.startTime);
+    }).observe({ type: "largest-contentful-paint", buffered: true });
+    new view.PerformanceObserver(list => {
+      for (const entry of list.getEntries()) {
+        if (entry.hadRecentInput) continue;
+        cls += entry.value;
+        const where = (entry.sources || []).map(src => {
+          const node = src.node;
+          if (!node) return "(detached)";
+          const id = node.id ? "#" + node.id : "";
+          const cls2 = node.className && typeof node.className === "string"
+            ? "." + node.className.split(" ")[0] : "";
+          return (node.tagName || "?") + id + cls2;
+        }).slice(0, 3).join(", ");
+        shifts.push({ value: entry.value, at: Math.round(entry.startTime), where });
+      }
+    }).observe({ type: "layout-shift", buffered: true });
+    new view.PerformanceObserver(list => {
+      for (const entry of list.getEntries()) {
+        longTasks += 1;
+        worstTask = Math.max(worstTask, entry.duration);
+      }
+    }).observe({ type: "longtask", buffered: true });
+  } catch (error) {
+    lines.push("NOTE  some observers are unavailable: " + error.message);
+  }
+
+  // let the boot finish and the observers flush
+  await new Promise(r => setTimeout(r, 4000));
+
+  const nav = view.performance.getEntriesByType("navigation")[0] || {};
+  const paint = view.performance.getEntriesByType("paint")
+    .find(p => p.name === "first-contentful-paint");
+  const bootMs = performance.now() - started;
+
+  const records = view.document.querySelectorAll(".rec").length;
+  say(records > 0, `boot rendered content: ${records} record rows`);
+
+  const fcp = paint ? paint.startTime : null;
+  say(fcp !== null && fcp < 1500, `first contentful paint: ${fcp ? fcp.toFixed(0) : "?"} ms (budget 1500)`);
+  say(lcp === 0 || lcp < 2000, `largest contentful paint: ${lcp ? lcp.toFixed(0) : "n/a"} ms (budget 2000)`);
+  say(cls < 0.1, `cumulative layout shift: ${cls.toFixed(3)} (budget 0.1)`);
+  if (shifts.length) {
+    lines.push("      the largest shifts:");
+    for (const shift of shifts.sort((a, b) => b.value - a.value).slice(0, 4)) {
+      lines.push(`        ${shift.value.toFixed(3)} at ${shift.at} ms — ${shift.where}`);
+    }
+  }
+  say(worstTask < 200, `worst long task: ${worstTask.toFixed(0)} ms, ${longTasks} total (budget 200)`);
+  say(nav.domContentLoadedEventEnd ? nav.domContentLoadedEventEnd < 2000 : true,
+      `DOMContentLoaded: ${nav.domContentLoadedEventEnd ? nav.domContentLoadedEventEnd.toFixed(0) : "n/a"} ms (budget 2000)`);
+  say(bootMs < 6000, `harness measured boot in ${bootMs.toFixed(0)} ms`);
+
+  document.getElementById("out").textContent =
+    lines.join("\n") + "\n\nA single-session lab observation, not field data.";
+})();
+</script>

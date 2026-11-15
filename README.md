@@ -96,13 +96,14 @@ writes the whole workspace to one file, and **Restore** reads it back.
 | | |
 |---|---|
 | Dependencies | **none** — no framework, no bundler, no build |
-| Payload | `index.html` plus `app.js`, 84 KB raw / 22 KB gzipped, plus a service worker and an icon |
+| Payload | `index.html` plus `app.js`, 38.7 KB gzipped against a 48 KB budget, 84 KB raw / 22 KB gzipped, plus a service worker and an icon |
 | Contrast | every text pair measured at **≥ 4.5:1** in both themes |
 | Touch targets | **44px** minimum; the rail becomes a bottom bar under 860px |
 | Keyboard | **⌘K** command palette, **1–7** sections, **/** search, **T** theme, full focus rings |
 | Deep links | `#unified/c4` opens that customer; `#deal/<id>` opens a deal; `#records` opens the list; `#command` the palette |
 | Print | `@media print` forces paper tokens — see [the sample output](assets/one-pager.pdf) |
-| Accessibility | [A11Y.md](A11Y.md) — eight browser checks, a measured contrast table, and what was not tested |
+| Accessibility | [PERFORMANCE.md](PERFORMANCE.md) | Budgets, the measurement, and CLS 0.291 → 0.021 |
+| [A11Y.md](A11Y.md) — eight browser checks, a measured contrast table, and what was not tested |
 | Motion | honours `prefers-reduced-motion` |
 | Network | none after first load; no analytics, no fonts, no CDN |
 

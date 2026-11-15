@@ -2272,14 +2272,18 @@ document.addEventListener("keydown", event => {
   ensureLedger().then(() => flushOutbox()).then(() => { renderLedger(); renderQueue(); }).catch(() => {});
   renderQueue();
 
+  const beforeHydration = JSON.stringify(state);
   state = await loadState();
+  const changed = JSON.stringify(state) !== beforeHydration;
   applyTheme(state.theme);
   applyDensity(state.density);
   $("#search").value = state.query || "";
   const record = activeRecord();
   RECORD = record.fields;
   ACTIVITY = record.activity;
-  renderAll();
+  // a first load with nothing stored hydrates to the defaults that are already
+  // painted; repainting them moves the page for no reason
+  if (changed) renderAll();
 
   // ?engine=<url>&token=<t> connects on load: a demo link that shows live data.
   // After hydration, not before - loadState() replaces the state object wholesale.

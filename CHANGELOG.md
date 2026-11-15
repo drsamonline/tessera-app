@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.28.0] - 2026-11-15
+
+### Performance
+
+- **CLS 0.291 → 0.021.** The first measurement failed the layout-shift budget by three times. The harness named the
+  sources (`DIV.grid2`, `DIV.ws`, `BUTTON#delRecord`) — the shell paints first by design, then `app.js` filled it and
+  pushed everything down. Fixed by reserving the height the content will occupy, and by not repainting after hydration
+  when the stored state is identical to what is already on screen.
+- **A budget, enforced.** `scripts/perf_budget.py`: 48 KB gzipped total, 32 KB for `app.js`. Measured 38.7 KB.
+- **`tests/perf-harness.html`** — FCP, LCP, CLS, long tasks and DOMContentLoaded, with the shift sources named when the
+  budget is breached.
+
+### Also
+
+- The print stylesheet now uses the tokens it declares instead of 39 raw hex values.
+- `#fields`, `.grid2` and `#recordList` reserve their content height.
+
+### Evidence type
+
+The browser numbers are a single-session lab observation, not field data. [PERFORMANCE.md](PERFORMANCE.md) says so in
+the document rather than in a footnote, and lists what is not measured: no RUM, no throttling, no low-end device, no
+INP.
+
 ## [1.27.0] - 2026-11-15
 
 ### Changed
