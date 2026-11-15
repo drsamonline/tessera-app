@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.23.0] - 2026-11-15
+
+### Added
+
+- **`PRIVACY.md`, `TERMS.md`, `SECURITY.md`.** The app stores customer records in the browser and ships as an
+  installable APK, and it had a licence and nothing else. That is the wrong order.
+- The privacy document states what is stored, where, and what leaves the device: **two things, both chosen by you** —
+  requests to the engine address you configure, and the sponsor link if you click it. It says plainly that the author
+  receives nothing and that the organisation deploying the app is the Data Fiduciary.
+- `SECURITY.md` lists the known limits up front: unencrypted browser storage, the token stored beside the data, no
+  integrity check beyond the service worker, and a debug-signed APK.
+
+### Why this release exists
+
+A scanner run over the repository reported `LICENSE` only, with `network_call` in 7 files and `on_device_storage` in
+5. Those two signals are exactly what a privacy notice has to describe, and there was no notice.
+
 ## [1.22.0] - 2026-11-15
 
 ### Added

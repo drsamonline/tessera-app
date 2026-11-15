@@ -106,6 +106,18 @@ writes the whole workspace to one file, and **Restore** reads it back.
 | Motion | honours `prefers-reduced-motion` |
 | Network | none after first load; no analytics, no fonts, no CDN |
 
+## Legal
+
+| | |
+|---|---|
+| [LICENSE](LICENSE) | PolyForm Noncommercial 1.0.0 |
+| [PRIVACY.md](PRIVACY.md) | What is stored on your device, what leaves it, and who is responsible |
+| [TERMS.md](TERMS.md) | Use, warranty, and what is yours to decide |
+| [SECURITY.md](SECURITY.md) | How to report a vulnerability, and the known limits stated up front |
+
+The privacy document is written against the code: `grep -n "fetch(" index.html` lists every request the app can make,
+and the document names both of them.
+
 ## Android
 
 `android/tessera-1.20.0-debug.apk` — a 17 KB WebView shell, built from source by
