@@ -34,6 +34,21 @@ jobs:
       - name: Escaping, CSP, shell, manifest, limits
         run: python3 scripts/check_app.py
 
+      - name: AGENTS.md names files that exist
+        run: |
+          python3 - <<'PY'
+          import pathlib, re, sys
+          text = pathlib.Path("AGENTS.md").read_text(encoding="utf-8")
+          named = set(re.findall(r"`([\w./-]+\.(?:html|js|py|sh|md|png))`", text))
+          missing = [n for n in named if not pathlib.Path(n).exists()
+                     and not n.startswith("assets/") and "*" not in n]
+          for name in sorted(named):
+              print(("ok  " if name not in missing else "MISSING ") + name)
+          if missing:
+              print("AGENTS.md names files that are not there: " + ", ".join(missing))
+              sys.exit(1)
+          PY
+
       - name: VERSION matches the top changelog entry
         run: |
           version=$(cat VERSION)

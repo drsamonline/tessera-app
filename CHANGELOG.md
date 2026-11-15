@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.29.0] - 2026-11-15
+
+### Added
+
+- **`AGENTS.md`** — what this repository is, the three commands that verify a change, the two browser harnesses, and the
+  five rules that keep it honest. Written so an agent with no conversation history can work without inventing a
+  framework.
+- **A CI check that `AGENTS.md` names files that exist.** An instruction file that points at a deleted script is a trap
+  for the next person, and nothing catches it by reading.
+
+### Fixed
+
+- The engine's `AGENTS.md` said "no implementation code, no build system and no test suite" — long after all three
+  existed. Corrected there in the same pass, with the verification gate added.
+
+### Why this release
+
+Five false claims have been found in this project's own documents in one day, each describing a system that no longer
+existed. The verification gate is the cheapest defence: run the command after the last edit, read the output, and when
+you add a check, break the thing on purpose and confirm it fails.
+
 ## [1.28.0] - 2026-11-15
 
 ### Performance
