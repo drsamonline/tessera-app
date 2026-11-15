@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.21.0] - 2026-11-15
+
+### Added
+
+- **An Android APK.** `android/tessera-1.20.0-debug.apk`, 17 KB, built from source by `android/scripts/build.sh` with
+  no Gradle and no Maven: `aapt2` → `javac` → `d8` → `zipalign` → `apksigner`, with a debug keystore generated on the
+  spot. A JDK and the Android SDK are the only requirements.
+- Verified: `apksigner verify` reports `CN=Android Debug`, the dex contains `MainActivity`, and `aapt2 dump badging`
+  shows the package, the icon, the label and the launcher activity.
+
+### What it is not
+
+A Trusted Web Activity. A TWA hides the URL bar only when the site publishes `assetlinks.json` naming this app's
+signing certificate — and a debug certificate is generated fresh on every machine, so that verification can never
+pass. A WebView shell needs no verification and is honest about being a shell.
+
+**It has never been run on a device.** There is no emulator in the environment that built it. The APK verifies, the
+dex contains the activity, the manifest resolves — that is the limit of what was checked.
+
 ## [1.20.0] - 2026-11-15
 
 ### Added

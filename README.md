@@ -105,6 +105,13 @@ writes the whole workspace to one file, and **Restore** reads it back.
 | Motion | honours `prefers-reduced-motion` |
 | Network | none after first load; no analytics, no fonts, no CDN |
 
+## Android
+
+`android/tessera-1.20.0-debug.apk` — a 17 KB WebView shell, built from source by
+`android/scripts/build.sh` with no Gradle and no signing key to create in advance. Sideload it, or read
+[android/README.md](android/README.md) for what it does and does not do. **It has never been run on a device** — there
+is no emulator in the environment that built it.
+
 ## It is a CRM, and it can be the only one
 
 Point it at an engine running `--standalone` and there is no CRM behind it: the native node is the system of record,
