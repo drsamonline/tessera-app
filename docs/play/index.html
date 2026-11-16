@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-density="comfortable">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src http: https:; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TESSERA — console</title>
+<meta name="description" content="One customer view across every system, with a tamper-evident ledger. Runs entirely in your browser, offline.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ee" media="(prefers-color-scheme: light)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<style>
+/* ---- tokens: the same values the reference core measures ------------------ */
+:root{
+  --bg:#0b0d10; --surface:#14181d; --raise:#1c2229; --line:#2a3038;
+  --line-control:#6b7480;
+  --text:#e8e6e1; --muted:#a3acb6; --accent:#d9a441; --accent-ink:#0b0d10;
+  --teal:#5fb3ac; --danger:#ff7b72; --ok:#56d364;
+  --r-sm:6px; --r:10px; --r-lg:14px;
+  --sp:16px; --gap:12px;
+  --fast:120ms; --base:150ms;
+  --font:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+html[data-theme="light"]{
+  --bg:#f7f4ee; --surface:#fff; --raise:#fff; --line:#cfc7b8;
+  --line-control:#8a8378;
+  --text:#14181d; --muted:#4f5760; --accent:#7a5512; --accent-ink:#fff;
+  --teal:#1f6b66; --danger:#a4262c; --ok:#1a6e33;
+}
+html[data-density="compact"]{ --sp:10px; --gap:8px; }
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+html,body{height:100%}
+body{
+  margin:0; background:var(--bg); color:var(--text); font-family:var(--font);
+  font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+  overscroll-behavior:none;
+}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:var(--r-sm)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---- shell --------------------------------------------------------------- */
+.app{display:grid; height:100dvh;
+  grid-template-columns:64px 1fr;
+  grid-template-rows:56px 1fr;
+  grid-template-areas:"rail bar" "rail main";}
+.bar{grid-area:bar; display:flex; align-items:center; gap:10px; padding:0 14px;
+  border-bottom:1px solid var(--line); background:var(--surface); position:relative; z-index:20}
+.rail{grid-area:rail; display:flex; flex-direction:column; gap:4px; padding:8px 6px;
+  border-right:1px solid var(--line); background:var(--surface)}
+.main{grid-area:main; overflow:auto; -webkit-overflow-scrolling:touch}
+.tabs{display:none}
+
+.rail button{display:grid; place-items:center; gap:2px; height:52px; border-radius:var(--r);
+  color:var(--muted); transition:color var(--fast), background var(--fast)}
+.rail button span{font-size:9.5px; letter-spacing:.02em}
+.rail button:hover{color:var(--text); background:var(--raise)}
+.rail button[aria-current="true"]{color:var(--accent-ink); background:var(--accent)}
+.rail button svg{width:19px;height:19px}
+
+.brand{display:flex;align-items:center;gap:9px;margin-right:6px}
+.brand .tile{width:24px;height:24px;flex:0 0 auto}
+.brand b{font-size:14px;letter-spacing:.12em}
+.ws{margin-left:auto;display:flex;align-items:center;gap:8px}
+.ws select{background:var(--raise);color:var(--text);border:1px solid var(--line-control);
+  border-radius:var(--r-sm); padding:7px 9px; font:inherit; font-size:13px}
+.iconbtn{width:38px;height:38px;display:grid;place-items:center;border-radius:var(--r);
+  border:1px solid var(--line); color:var(--muted); background:var(--raise)}
+.iconbtn:hover{color:var(--text)}
+.iconbtn svg{width:17px;height:17px}
+
+/* ---- panels -------------------------------------------------------------- */
+.view{display:none; padding:var(--sp); max-width:1180px; margin:0 auto}
+.view[data-active]{display:block}
+.view h1{font-size:20px;margin:0 0 2px;letter-spacing:-.01em}
+.view .sub{color:var(--muted);font-size:13px;margin:0 0 var(--sp)}
+.grid2{display:grid;gap:var(--gap);grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);align-items:start}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden}
+.card > header{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;
+  align-items:center;gap:10px;font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.card .body{padding:14px}
+
+/* record head */
+.board{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;align-items:flex-start}
+.col{flex:0 0 236px;background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--r-lg);overflow:hidden}
+.col > header{display:flex;justify-content:space-between;align-items:baseline;
+  padding:10px 12px;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.07em}
+.col > header b{color:var(--text);font-size:12px;letter-spacing:0}
+.col .cards{padding:8px;display:flex;flex-direction:column;gap:8px;min-height:44px}
+.dcard{background:var(--raise);border:1px solid var(--line-control);border-radius:var(--r);
+  padding:10px 12px;text-align:left;width:100%}
+.dcard:hover{border-color:var(--accent)}
+.dcard b{display:block;font-size:13px;font-weight:600;margin-bottom:4px}
+.dcard .amt{font-family:var(--mono);font-size:12px;color:var(--accent)}
+.dcard .co{font-size:11px;color:var(--muted);display:block;margin-top:2px}
+.dcard .move{margin-top:8px;font-size:11px;color:var(--muted);border:1px solid var(--line-control);
+  border-radius:999px;padding:3px 10px;min-height:26px}
+.dcard .move:hover{color:var(--accent);border-color:var(--accent)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:var(--gap)}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
+.kpi b{display:block;font-size:26px;font-weight:650;letter-spacing:-.02em}
+.kpi span{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.bar{display:grid;grid-template-columns:110px minmax(0,1fr) 46px;gap:10px;align-items:center;
+  margin:7px 0;font-size:12.5px}
+.bar .track{display:block;height:8px;border-radius:999px;background:var(--raise);overflow:hidden}
+.bar .fill{display:block;height:100%;border-radius:999px;background:var(--accent);min-width:2px}
+.bar > span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar .n{text-align:right;font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.strip{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:var(--gap)}
+.conn{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;
+  border:1px solid var(--line);background:var(--surface);font-size:12px;color:var(--muted)}
+.conn b{color:var(--text);font-weight:600;font-size:12.5px}
+.conn .dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.conn.warn .dot{background:var(--accent)} .conn.warn{color:var(--accent)}
+.conn.bad .dot{background:var(--danger)} .conn.bad{color:var(--danger)}
+.conn time{font-family:var(--mono);font-size:11px}
+.record{display:flex;gap:14px;align-items:center;padding:16px}
+.avatar{width:48px;height:48px;border-radius:12px;background:var(--accent);color:var(--accent-ink);
+  display:grid;place-items:center;font-weight:650;font-size:17px;flex:0 0 auto}
+.record .who b{display:block;font-size:17px;letter-spacing:-.01em}
+.record .who span{color:var(--muted);font-size:13px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:999px;
+  font-size:11.5px;border:1px solid var(--line);color:var(--muted);background:var(--raise)}
+.chip.ok{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 40%,transparent)}
+.chip.warn{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+.chip.bad{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 40%,transparent)}
+.pill{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+
+/* field rows */
+.fields{display:grid;grid-template-columns:1fr;gap:0}
+.search{margin-left:auto;background:var(--raise);color:var(--text);border:1px solid var(--line-control);
+  border-radius:999px;padding:8px 14px;font:inherit;font-size:13px;min-width:220px;max-width:46vw}
+.search:focus{outline:2px solid var(--accent);outline-offset:1px}
+#viewBar{margin-bottom:12px}
+#viewBar .seg button{min-height:36px}
+#viewBar select{background:var(--raise);color:var(--text);border:1px solid var(--line-control);
+  border-radius:var(--r-sm);padding:8px 10px;font:inherit;font-size:12.5px;max-width:170px}
+#recordList{min-height:120px}
+#fields{min-height:456px}   /* eight rows at 57px: the space the record occupies */
+.grid2{min-height:520px}   /* record card plus its padding, before the data lands */
+.rec{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;align-items:center;
+  padding:12px 14px;border-top:1px solid var(--line);width:100%;text-align:left;
+  min-height:64px;background:none;transition:background var(--fast)}
+.rec:first-child{border-top:0}
+.rec:hover{background:var(--raise)}
+.rec[aria-current="true"]{background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.rec .av{width:36px;height:36px;border-radius:10px;background:var(--raise);color:var(--text);
+  display:grid;place-items:center;font-size:12.5px;font-weight:650;border:1px solid var(--line)}
+.rec .nm{display:block;font-size:14.5px;font-weight:600;letter-spacing:-.01em}
+.rec .meta{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.rec .right{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.empty{padding:24px 14px;color:var(--muted);font-size:13.5px;text-align:center}
+kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-bottom-width:2px;
+  border-radius:5px;padding:1px 5px;background:var(--raise)}
+.linkish{color:var(--accent);font-weight:600;text-decoration:none;
+  border-bottom:1px dashed color-mix(in srgb,var(--accent) 50%,transparent)}
+.linkish:hover{border-bottom-style:solid}
+.editbtn{width:30px;height:30px;border-radius:8px;border:1px solid transparent;color:var(--muted);
+  font-size:13px;opacity:.55;transition:opacity var(--fast),border-color var(--fast)}
+.frow:hover .linkish{color:var(--accent);font-weight:600;text-decoration:none;
+  border-bottom:1px dashed color-mix(in srgb,var(--accent) 50%,transparent)}
+.linkish:hover{border-bottom-style:solid}
+.editbtn{opacity:1;border-color:var(--line-control)}
+.editbtn:hover{color:var(--accent);border-color:var(--accent)}
+.frow{display:grid;grid-template-columns:132px minmax(0,1fr) auto auto auto;gap:10px 14px;
+  align-items:center;padding:12px 14px;border-top:1px solid var(--line);min-height:54px;
+  transition:background var(--fast)}
+.frow:first-child{border-top:0}
+.frow:hover{background:var(--raise)}
+.frow .k{color:var(--muted);font-size:12px;letter-spacing:.01em;text-transform:capitalize}
+.frow .v{font-size:14.5px;overflow-wrap:anywhere;min-width:0;text-align:left;
+  padding:0;border-bottom:1px dashed transparent;transition:border-color var(--fast)}
+.frow .v:hover{border-bottom-color:var(--line)}
+.frow .src{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap}
+.frow[data-conflict]{background:color-mix(in srgb,var(--accent) 6%,transparent)}
+.frow[data-conflict] .v{color:var(--accent)}
+.frow[data-conflict] .src{color:var(--accent);opacity:.85}
+.spacer{flex:1 1 auto}
+.rowaction.danger{color:var(--danger);border-color:var(--danger)}
+.rowaction.danger:hover{background:var(--danger);color:var(--bg)}
+.rowaction{min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--accent);
+  color:var(--accent);background:transparent;font-size:12px;font-weight:600;white-space:nowrap}
+button.rowaction:hover{background:var(--accent);color:var(--accent-ink)}
+.frow:not([data-conflict]) .rowaction{display:none}
+
+/* timeline */
+.tl{list-style:none;margin:0;padding:0}
+.tl li{position:relative;padding:0 0 16px 22px;border-left:1px solid var(--line);margin-left:6px}
+.tl li:last-child{padding-bottom:0;border-left-color:transparent}
+.tl li::before{content:"";position:absolute;left:-5px;top:4px;width:9px;height:9px;border-radius:50%;
+  background:var(--teal);box-shadow:0 0 0 3px var(--surface)}
+.tl time{display:block;color:var(--muted);font-size:11.5px;font-family:var(--mono)}
+.tl p{margin:2px 0 0;font-size:13.5px}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;
+  padding:0 16px;border-radius:var(--r);border:1px solid var(--line-control);background:var(--raise);
+  color:var(--text);font-size:13.5px;transition:transform var(--fast), border-color var(--fast)}
+.btn:hover{border-color:var(--accent)}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn:disabled:hover{border-color:var(--line)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.btn.ghost{background:transparent}
+.btn.small{min-height:38px;padding:0 12px;font-size:12.5px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.spread{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+
+/* conflict cards, ledger rows, seats */
+.item{border:1px solid var(--line);border-radius:var(--r);padding:12px;margin-bottom:10px;background:var(--surface)}
+.item .top{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px}
+.item .val{font-family:var(--mono);font-size:12.5px;padding:3px 7px;border-radius:var(--r-sm);
+  background:var(--raise);border:1px solid var(--line);display:inline-block;overflow-wrap:anywhere}
+.mono{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.ledger{width:100%;border-collapse:collapse;font-size:12.5px}
+.ledger th{text-align:left;color:var(--muted);font-weight:500;padding:8px 10px;border-bottom:1px solid var(--line);
+  font-size:11px;letter-spacing:.05em;text-transform:uppercase;position:sticky;top:0;background:var(--surface)}
+.ledger td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+.ledger tr[data-bad] td{background:color-mix(in srgb,var(--danger) 12%,transparent)}
+.hash{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+
+.seat{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:12px;
+  border:1px solid var(--line);border-radius:var(--r);margin-bottom:10px}
+.seat .occ{font-size:12.5px;color:var(--muted)}
+.bar-track{height:6px;border-radius:99px;background:var(--raise);overflow:hidden;margin-top:8px}
+.bar-fill{height:100%;background:var(--accent)}
+.breakdown{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:8px;white-space:pre-wrap}
+
+/* settings */
+.setting{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:14px 0;
+  border-top:1px solid var(--line)}
+.setting:first-child{border-top:0}
+.seg{display:inline-flex;border:1px solid var(--line-control);border-radius:var(--r);overflow:hidden}
+.seg button{min-height:40px;padding:0 14px;font-size:12.5px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);font-weight:600}
+.note{color:var(--muted);font-size:12.5px;line-height:1.6}
+a{color:var(--accent)}
+
+/* history sheet */
+#hist{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;display:grid;place-items:center;
+  padding:16px;backdrop-filter:blur(2px)}
+#hist[hidden],#imp[hidden]{display:none}
+#pal{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:80;display:grid;
+  place-items:start center;padding:12vh 16px 16px;backdrop-filter:blur(2px)}
+#pal[hidden]{display:none}
+.pal-sheet{width:min(560px,100%);background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--r-lg);overflow:hidden;box-shadow:0 30px 70px -30px rgba(0,0,0,.9)}
+#palInput{width:100%;border:0;border-bottom:1px solid var(--line);background:var(--surface);
+  color:var(--text);font:inherit;font-size:15px;padding:14px 16px}
+#palInput:focus{outline:none}
+#palList{max-height:52vh;overflow:auto;padding:6px}
+.pal-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 12px;
+  border-radius:var(--r-sm);font-size:13.5px;min-height:44px;color:var(--text)}
+.pal-item[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+.pal-item .kind{margin-left:auto;font-size:10.5px;font-family:var(--mono);opacity:.7}
+#dealSheet{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;display:grid;place-items:center;
+  padding:16px;backdrop-filter:blur(2px)}
+#dealSheet[hidden]{display:none}
+@media (max-width:640px){#dealSheet{place-items:end center;padding:0}
+  #dealSheet .sheet{width:100%;border-radius:var(--r-lg) var(--r-lg) 0 0;max-height:92vh}}
+#del{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;display:grid;place-items:center;
+  padding:16px;backdrop-filter:blur(2px)}
+#del[hidden]{display:none}
+@media (max-width:640px){#del{place-items:end center;padding:0}
+  #del .sheet{width:100%;border-radius:var(--r-lg) var(--r-lg) 0 0}}
+#mail{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;display:grid;place-items:center;
+  padding:16px;backdrop-filter:blur(2px)}
+#mail[hidden]{display:none}
+#mail textarea{width:100%;background:var(--raise);color:var(--text);border:1px solid var(--line-control);
+  border-radius:var(--r-sm);padding:10px 12px;font:inherit;font-size:13px;resize:vertical}
+@media (max-width:640px){#mail{place-items:end center;padding:0}
+  #mail .sheet{width:100%;border-radius:var(--r-lg) var(--r-lg) 0 0;max-height:92vh}}
+#edit{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;display:grid;place-items:center;
+  padding:16px;backdrop-filter:blur(2px)}
+#edit[hidden]{display:none}
+@media (max-width:640px){#edit{place-items:end center;padding:0}
+  #edit .sheet{width:100%;border-radius:var(--r-lg) var(--r-lg) 0 0}}
+#new{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;display:grid;place-items:center;
+  padding:16px;backdrop-filter:blur(2px)}
+#new[hidden]{display:none}
+.field{display:block;margin-bottom:10px}
+.field > span{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;
+  text-transform:uppercase;letter-spacing:.06em}
+.field input,.field select{width:100%;background:var(--raise);color:var(--text);
+  border:1px solid var(--line-control);border-radius:var(--r-sm);padding:10px 12px;
+  font:inherit;font-size:13px;min-height:44px}
+@media (max-width:640px){#new{place-items:end center;padding:0}
+  #new .sheet{width:100%;border-radius:var(--r-lg) var(--r-lg) 0 0;max-height:92vh}}
+#imp{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;display:grid;place-items:center;
+  padding:16px;backdrop-filter:blur(2px)}
+#imp .sheet{max-height:86vh}
+.mapline{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:center;
+  padding:6px 0;border-bottom:1px solid var(--line)}
+.mapline select{background:var(--raise);color:var(--text);border:1px solid var(--line-control);
+  border-radius:var(--r-sm);padding:6px 8px;font:inherit;font-size:12.5px;width:100%}
+.mapline .arrow{color:var(--muted);font-size:12px}
+.prow{display:grid;grid-template-columns:auto 1fr;gap:8px;padding:6px 0;font-size:12.5px;
+  border-bottom:1px solid var(--line)}
+.prow.bad{color:var(--danger)}
+@media (max-width:640px){#imp{place-items:end center;padding:0}
+  #imp .sheet{width:100%;border-radius:var(--r-lg) var(--r-lg) 0 0;max-height:92vh}}
+.sheet{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);
+  width:min(560px,100%);max-height:min(70vh,560px);display:flex;flex-direction:column;overflow:hidden}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;
+  border-bottom:1px solid var(--line)}
+.sheet-body{padding:6px 14px 14px;overflow:auto}
+.hrow{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.hrow:last-child{border-bottom:0}
+.hrow .when{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap}
+.hrow .what{font-size:13.5px}
+.hrow .val{font-family:var(--mono);font-size:12px;color:var(--accent)}
+@media (max-width:640px){
+  #hist{place-items:end center;padding:0}
+  .sheet{width:100%;border-radius:var(--r-lg) var(--r-lg) 0 0;max-height:80vh;
+    padding-bottom:env(safe-area-inset-bottom)}
+}
+/* toast */
+#update{position:fixed;left:50%;transform:translateX(-50%);top:12px;z-index:90;
+  display:flex;align-items:center;gap:12px;background:var(--raise);border:1px solid var(--accent);
+  border-radius:999px;padding:8px 10px 8px 16px;font-size:13px;box-shadow:0 12px 30px -12px rgba(0,0,0,.7)}
+#update[hidden]{display:none}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(74px + env(safe-area-inset-bottom));
+  background:var(--raise);border:1px solid var(--line);border-radius:999px;padding:10px 16px;font-size:13px;
+  opacity:0;pointer-events:none;transition:opacity var(--base);z-index:60;max-width:92vw}
+#toast[data-show]{opacity:1;pointer-events:auto}
+#toast .undo{margin-left:12px;border:1px solid var(--accent);color:var(--accent);
+  border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600}
+#toast .undo:hover{background:var(--accent);color:var(--accent-ink)}
+
+/* ---- small screens ------------------------------------------------------- */
+@media (max-width:860px){
+  .app{grid-template-columns:1fr; grid-template-rows:54px 1fr 62px;
+    grid-template-areas:"bar" "main" "tabs"}
+  .rail{display:none}
+  .tabs{grid-area:tabs; display:flex; border-top:1px solid var(--line); background:var(--surface);
+    padding-bottom:env(safe-area-inset-bottom)}
+  .tabs button{flex:1;display:grid;place-items:center;gap:2px;color:var(--muted);min-height:56px}
+  .tabs button span{font-size:10px}
+  .tabs button svg{width:20px;height:20px}
+  .tabs button[aria-current="true"]{color:var(--accent)}
+  .grid2{grid-template-columns:1fr}
+  .view{padding:12px}
+  .frow{grid-template-columns:minmax(0,1fr) auto;
+    grid-template-areas:"k k" "v a" "s s";gap:3px 10px;padding:12px 14px}
+  .frow .k{grid-area:k;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em}
+  .frow .v{grid-area:v}
+  .frow .src{grid-area:s;white-space:normal;font-size:10.5px}
+  .frow .spacer{flex:1 1 auto}
+.rowaction.danger{color:var(--danger);border-color:var(--danger)}
+.rowaction.danger:hover{background:var(--danger);color:var(--bg)}
+.rowaction{grid-area:a}
+  .brand b{display:none}
+  .ws select{max-width:110px}
+  .record{padding:14px}
+  .record .who b{font-size:15.5px}
+  .ledger th:nth-child(3),.ledger td:nth-child(3){display:none}
+  .card > header{flex-wrap:wrap}
+  .card > header .search{margin-left:0;width:100%;max-width:none;order:3}
+  #viewBar{gap:8px}
+  #viewBar .seg{flex:1 1 auto}
+  #viewBar .seg button{flex:1;padding:0 8px}
+  #viewBar select{flex:1 1 44%;max-width:none}
+  #viewName{flex:1 1 44%;min-width:0;max-width:none;margin-left:0}
+  #saveView{flex:1 1 44%}
+  .rec{grid-template-columns:36px minmax(0,1fr);gap:10px;padding:12px}
+  .rec .right{grid-column:1/-1;justify-content:flex-start;margin-top:2px}
+}
+@media (max-width:420px){
+  .pill{width:100%;margin-left:0}
+  .record{flex-wrap:wrap}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none !important; animation:none !important}
+}
+
+/* ---- the one-pager -------------------------------------------------------
+   What a person prints is the record, its provenance, its activity and the
+   chain head — not the app. Every control is hidden, the theme is forced to
+   paper, and the two columns become one. */
+.print-only{display:none}
+@media print{
+  /* override the tokens, not every rule: the cards keep their own background,
+     and a dark card on white paper is unreadable. */
+  html[data-theme],html[data-theme="light"],html[data-theme="dark"]{
+    --bg:#fff; --surface:#fff; --raise:#fff; --line:#b8b8b8;
+    --text:#111; --muted:#555; --accent:#111; --accent-ink:#fff;
+    --teal:#444; --danger:#111; --ok:#111;
+  }
+  @page{margin:12mm}
+  html,body{background:var(--bg);color:var(--text);font-size:10.5pt}
+  .app{display:block;height:auto}
+  .rail,.tabs,.bar,#toast,#hist,#imp,#pal,.rowaction,.btn,.chip,.avatar,
+  .frow .rowaction,#connectors,.view h1,.view .sub{display:none !important}
+  .main{overflow:visible}
+  .view{display:none !important;padding:0}
+  .view[data-active]{display:block !important}
+  .grid2{grid-template-columns:1fr;gap:6mm}
+  .card{border:1px solid var(--line);border-radius:0;break-inside:avoid;margin-bottom:5mm}
+  .card > header{padding:6px 10px;font-size:8.5pt;color:var(--muted);border-bottom:1px solid var(--line)}
+  .card .body{padding:8px 10px}
+  .record{padding:8px 10px;border-bottom:1px solid var(--line)}
+  .record .who b{font-size:12pt}
+  .frow{border-top:1px solid var(--line);min-height:0;padding:4px 10px;font-size:9.5pt}
+  .frow .v{color:var(--text)}
+  .frow .src{color:var(--muted);font-size:8.5pt}
+  .frow[data-conflict]{background:none}
+  .frow[data-conflict] .v{color:var(--text);font-weight:600}
+  .frow[data-conflict] .src::after{content:" (unresolved conflict)"}
+  .tl li{padding-bottom:8px}
+  .tl li::before{background:var(--muted);box-shadow:none}
+  .tl time{font-size:8pt;color:var(--muted)}
+  .tl p{font-size:9.5pt}
+  .print-only{display:block}
+  .print-head{display:flex !important;justify-content:space-between;gap:8mm;
+    font-size:8.5pt;color:var(--muted);border-bottom:2px solid var(--text);padding-bottom:2mm;margin-bottom:5mm}
+  .print-head b{color:var(--text);letter-spacing:.08em}
+  a{color:var(--text);text-decoration:none}
+}
+}
+</style>
+<meta name="description" content="One customer view across every system, with a tamper-evident ledger. Runs entirely in your browser, offline.">
+<link rel="canonical" href="https://drsamonline.github.io/tessera-app/play/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Asha Rao — live demo">
+<meta property="og:description" content="One customer view across every system, with a tamper-evident ledger. Runs entirely in your browser, offline.">
+<meta property="og:url" content="https://drsamonline.github.io/tessera-app/play/">
+<meta name="twitter:card" content="summary">
+<meta name="robots" content="index, follow">
+</head>
+<body>
+<div class="app">
+
+  <aside class="rail" aria-label="Sections">
+    <button data-go="unified" aria-current="true" title="Unified view">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
+      <span>Unified</span></button>
+    <button data-go="records" title="Records">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+      <span>Records</span></button>
+    <button data-go="conflicts" title="Conflicts">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.01"/></svg>
+      <span>Resolve</span></button>
+    <button data-go="ledger" title="Ledger">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><rect x="4" y="4" width="16" height="7"/><rect x="4" y="13" width="16" height="7"/></svg>
+      <span>Ledger</span></button>
+    <button data-go="workforce" title="Workforce">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><rect x="5" y="3" width="14" height="12"/><path d="M5 15v6M19 15v6"/></svg>
+      <span>Workforce</span></button>
+    <button data-go="automations" title="Automations">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M3 12h4l3 7 4-14 3 7h4"/></svg>
+      <span>Automate</span></button>
+    <button data-go="pipeline" title="Pipeline">
+      <span class="ico" aria-hidden="true">▥</span><span>Pipeline</span>
+    </button>
+    <button data-go="report" title="Report">
+      <span class="ico" aria-hidden="true">▤</span><span>Report</span>
+    </button>
+    <button data-go="settings" title="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/></svg>
+      <span>Settings</span></button>
+  </aside>
+
+  <header class="bar">
+    <div class="brand">
+      <svg class="tile" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="1" y="1" width="10" height="10" rx="2.4" fill="#d9a441"/>
+        <rect x="13" y="1" width="10" height="10" rx="2.4" fill="#5fb3ac" opacity=".85"/>
+        <rect x="1" y="13" width="10" height="10" rx="2.4" fill="#5fb3ac" opacity=".55"/>
+        <rect x="13" y="13" width="10" height="10" rx="2.4" fill="#d9a441" opacity=".55"/>
+      </svg>
+      <b>TESSERA</b>
+    </div>
+    <div class="ws">
+      <label class="sr" for="ws">Workspace</label>
+      <span class="chip warn" id="queueChip" hidden title="Writes waiting to reach the ledger"></span>
+      <span class="chip ok" id="engineChip" hidden title="Reading from a running engine"></span>
+      <select id="ws"><option>Acme</option><option>Northwind</option></select>
+      <button class="iconbtn" id="theme" title="Switch theme" aria-label="Switch theme">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="main" id="main">
+
+    <!-- UNIFIED ---------------------------------------------------------- -->
+    <section class="view" id="unified" data-active>
+      <h1 id="recordName">Asha Rao</h1>
+      <p class="sub">One customer, four systems, one record. Every field says where it came from.</p>
+      <div class="row" style="margin:-6px 0 12px">
+        <button class="rowaction" id="backToList">All records</button>
+        <button class="rowaction" id="exportJson">Export JSON</button>
+        <button class="rowaction" id="exportCsv">Export CSV</button>
+        <button class="rowaction" id="copyLink">Copy link</button>
+        <button class="rowaction" id="printOne">Print record</button>
+        <button class="rowaction" id="logMail">Log email</button>
+        <span class="spacer" aria-hidden="true"></span>
+        <button class="rowaction danger" id="delRecord">Tombstone</button>
+      </div>
+
+      <div class="print-only print-head">
+        <b>TESSERA — customer record</b>
+        <span id="printMeta"></span>
+      </div>
+      <div class="strip" id="connectors" aria-label="Connected systems"></div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="record">
+            <div class="avatar" id="recordAvatar" aria-hidden="true">AR</div>
+            <div class="who">
+              <b id="recordTitle">Asha Rao</b>
+              <span id="recordSubtitle">Director of Operations · Acme Industrial</span>
+            </div>
+            <div class="pill">
+              <span class="chip ok" id="healthChip">Relationship health 82</span>
+              <span class="chip warn" id="conflictCount">2 conflicts</span>
+            </div>
+          </div>
+          <div class="fields" id="fields"></div>
+        </div>
+
+        <div class="card">
+          <header>Activity</header>
+          <div class="body">
+            <ul class="tl" id="timeline"></ul>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:var(--gap)">
+          <header>Related</header>
+          <div class="body" id="related"></div>
+        </div>
+
+        <div class="card" style="margin-top:var(--gap)">
+          <header>Notes</header>
+          <div class="body">
+            <div class="row" style="margin-bottom:10px">
+              <label class="sr" for="noteText">Add a note</label>
+              <input id="noteText" class="search" style="flex:1 1 auto;min-width:0"
+                     placeholder="What happened, and what should the next person know?">
+              <button class="btn small primary" id="noteAdd">Add note</button>
+            </div>
+            <ul class="tl" id="noteList"></ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RECORDS ---------------------------------------------------------- -->
+    <section class="view" id="records">
+      <h1>Records</h1>
+      <p class="sub">Every customer, one row each, with the systems that disagree counted. Press <kbd>/</kbd> to search.</p>
+      <div class="row" id="viewBar">
+        <div class="seg" id="filterSeg" aria-label="Filter">
+          <button data-filter="all" aria-pressed="true">All</button>
+          <button data-filter="conflicts" aria-pressed="false">Conflicts</button>
+          <button data-filter="agrees" aria-pressed="false">Agrees</button>
+        </div>
+        <div class="seg" id="sortSeg" aria-label="Sort">
+          <button data-sort="name" aria-pressed="true">Name</button>
+          <button data-sort="health" aria-pressed="false">Health</button>
+          <button data-sort="conflicts" aria-pressed="false">Conflicts</button>
+        </div>
+        <select id="savedViews" aria-label="Saved views"><option value="">Saved views…</option></select>
+        <input id="viewName" class="search" style="min-width:150px" placeholder="Name this view"
+               aria-label="Name this view" autocomplete="off">
+        <button class="btn small" id="saveView">Save view</button>
+        <button class="btn small primary" id="openNew">New customer</button>
+        <button class="btn small" id="openImport">Import CSV</button>
+      </div>
+
+      <div class="card">
+        <header>
+          <span>Customers</span>
+          <span class="chip" id="recordCount"></span>
+          <input id="search" class="search" type="search" placeholder="Search name, company, email…"
+                 aria-label="Search records" autocomplete="off">
+        </header>
+        <div class="body" style="padding:0">
+          <div id="recordList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONFLICTS -------------------------------------------------------- -->
+    <section class="view" id="conflicts">
+      <h1>Resolve</h1>
+      <p class="sub">Where two systems disagree, the rule that decides is shown before you choose.</p>
+      <div class="row" style="margin-bottom:12px">
+        <button class="btn primary" id="resolveAll">Resolve all with the engine's rule</button>
+        <span class="note" id="conflictSummary"></span>
+      </div>
+      <div id="rulesBox"></div>
+      <div id="conflictList"></div>
+    </section>
+
+    <!-- LEDGER ----------------------------------------------------------- -->
+    <section class="view" id="ledger">
+      <h1>Ledger</h1>
+      <p class="sub">Every action, hash-chained. Verification runs here, in your browser.</p>
+      <div class="card">
+        <header>
+          <span>Chain</span>
+          <span class="chip ok" id="chainState">not verified</span>
+          <span style="margin-left:auto" class="row">
+            <button class="btn small" id="verify">Verify chain</button>
+            <button class="btn small ghost" id="tamper">Tamper with one event</button>
+            <button class="btn small ghost" id="reset">Reset demo</button>
+          </span>
+        </header>
+        <div class="body" style="padding:0;overflow:auto;max-height:62vh">
+          <table class="ledger">
+            <thead><tr><th>#</th><th>Action</th><th>Actor</th><th>Hash</th></tr></thead>
+            <tbody id="ledgerRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- WORKFORCE -------------------------------------------------------- -->
+    <section class="view" id="workforce">
+      <h1>Workforce</h1>
+      <p class="sub">Work is assigned to a position, never to a person. A human or an agent fills it.</p>
+      <div class="grid2">
+        <div class="card">
+          <header>Positions</header>
+          <div class="body" id="seats"></div>
+        </div>
+        <div class="card">
+          <header>Routing</header>
+          <div class="body">
+            <p class="note" id="routingNote">A task is waiting. The router scores every occupant of the position.</p>
+            <div id="routing"></div>
+            <div class="row" style="margin-top:12px">
+              <button class="btn primary" id="assign">Assign task</button>
+              <button class="btn" id="assignMe">Assign to me</button>
+              <button class="btn" id="escalate">Escalate</button>
+            </div>
+            <div id="packet" class="breakdown"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- AUTOMATIONS ------------------------------------------------------ -->
+    <section class="view" id="automations">
+      <h1>Automate</h1>
+      <p class="sub">A playbook written by an agent is a proposal until a person approves it.</p>
+      <div id="workflows"></div>
+    </section>
+
+    <!-- SETTINGS --------------------------------------------------------- -->
+    <section class="view" id="pipeline">
+      <h1>Pipeline</h1>
+      <p class="sub">Deals by stage. A card opens the deal; the arrow moves it and writes the change to the
+        system of record.</p>
+      <div class="board" id="board"></div>
+    </section>
+
+    <section class="view" id="report">
+      <h1>Report</h1>
+      <p class="sub">What is in the system, where it came from, and what is not decided yet.</p>
+      <div class="kpis" id="reportKpis"></div>
+      <div class="grid2">
+        <div class="card">
+          <header>Pipeline by stage</header>
+          <div class="body" id="reportPipeline"></div>
+        </div>
+        <div class="card">
+          <header>Where the data comes from</header>
+          <div class="body" id="reportSources"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:var(--gap)">
+        <header>Completeness</header>
+        <div class="body" id="reportCompleteness"></div>
+      </div>
+    </section>
+
+    <section class="view" id="settings">
+      <h1>Settings</h1>
+      <p class="sub">Preferences are stored on this device. Nothing leaves the browser.</p>
+      <div class="card">
+        <header>Appearance</header>
+        <div class="body">
+          <div class="setting">
+            <div><b>Theme</b><div class="note">Both themes are measured for WCAG AA contrast.</div></div>
+            <div class="seg" id="themeSeg">
+              <button data-theme-set="dark" aria-pressed="true">Dark</button>
+              <button data-theme-set="light" aria-pressed="false">Light</button>
+            </div>
+          </div>
+          <div class="setting">
+            <div><b>Density</b><div class="note">Compact fits more rows; comfortable is the default.</div></div>
+            <div class="seg" id="densitySeg">
+              <button data-density-set="comfortable" aria-pressed="true">Comfortable</button>
+              <button data-density-set="compact" aria-pressed="false">Compact</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:12px">
+        <header>Engine</header>
+        <div class="body">
+          <p class="note" style="margin:0 0 12px">Point the console at a running TESSERA engine and the Records
+            list comes from it instead of the demo. <code>python3 -m tessera.api</code> prints its URL and token.</p>
+          <div class="setting">
+            <div><b>Address</b><div class="note">Base URL of the API, no trailing slash.</div></div>
+            <input id="engineUrl" class="search" style="min-width:220px" placeholder="http://127.0.0.1:8080">
+          </div>
+          <div class="setting">
+            <div><b>Token</b><div class="note">Sent as a bearer header. Stored in this browser only.</div></div>
+            <input id="engineToken" class="search" style="min-width:220px" placeholder="demo-token" type="password">
+          </div>
+          <div class="setting">
+            <div><b>Status</b><div class="note" id="engineStatus">Not connected — showing the demo.</div></div>
+            <div class="row">
+              <button class="btn small primary" id="engineConnect">Connect</button>
+              <button class="btn small ghost" id="engineDisconnect">Disconnect</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <header>Workspace</header>
+        <div class="body">
+          <div class="setting">
+            <div><b>Back up everything</b>
+              <div class="note">One file: your resolutions, rules, imported records and the ledger.</div></div>
+            <div class="row">
+              <button class="btn small" id="exportWorkspace">Download</button>
+              <button class="btn small" id="importWorkspace">Restore</button>
+              <input type="file" id="workspaceFile" accept="application/json" hidden>
+            </div>
+          </div>
+          <p class="note" id="storageStatus">Checking storage…</p>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <header>About</header>
+        <div class="body">
+          <p class="note">
+            <b>TESSERA console</b> is a working demonstration of the reference core at
+            <a href="https://github.com/drsamonline/tessera">drsamonline/tessera</a>: field-level merge,
+            conflict resolution, a hash-chained ledger, seat-based routing and the proposal gate - all
+            reimplemented in the browser, with no server and no network.
+          </p>
+          <p class="note">
+            Built by <b>Dr Sohil Momin</b>. Licensed under PolyForm Noncommercial 1.0.0.
+            If it saved you an afternoon, <a href="https://ko-fi.com/matneo" rel="noopener noreferrer" referrerpolicy="no-referrer">buy the author a coffee</a>.
+          </p>
+          <p class="note" id="storageNote"></p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabs" aria-label="Sections">
+    <button data-go="unified" aria-current="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg><span>Unified</span></button>
+    <button data-go="records">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg><span>Records</span></button>
+    <button data-go="conflicts">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.01"/></svg><span>Resolve</span></button>
+    <button data-go="ledger">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><rect x="4" y="4" width="16" height="7"/><rect x="4" y="13" width="16" height="7"/></svg><span>Ledger</span></button>
+    <button data-go="workforce">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><rect x="5" y="3" width="14" height="12"/><path d="M5 15v6M19 15v6"/></svg><span>Work</span></button>
+    <button data-go="automations">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M3 12h4l3 7 4-14 3 7h4"/></svg><span>Automate</span></button>
+    <button data-go="pipeline">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="13" rx="1"/></svg><span>Pipeline</span></button>
+    <button data-go="report">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span>Report</span></button>
+    <button data-go="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/></svg><span>Settings</span></button>
+  </nav>
+</div>
+<div id="pal" hidden>
+  <div class="pal-sheet" role="dialog" aria-modal="true" aria-labelledby="palLabel">
+    <label class="sr" id="palLabel" for="palInput">Command</label>
+    <input id="palInput" type="text" placeholder="Jump to a customer, or type a command…"
+           autocomplete="off" spellcheck="false">
+    <div id="palList" role="listbox" aria-label="Commands"></div>
+  </div>
+</div>
+<div id="dealSheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="dealTitle">
+    <div class="sheet-head">
+      <b id="dealTitle">Deal</b>
+      <button class="iconbtn" id="dealClose" aria-label="Close">✕</button>
+    </div>
+    <div class="sheet-body" id="dealBody"></div>
+  </div>
+</div>
+<div id="del" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="delTitle">
+    <div class="sheet-head">
+      <b id="delTitle">Tombstone this record</b>
+      <button class="iconbtn" id="delClose" aria-label="Close">✕</button>
+    </div>
+    <div class="sheet-body">
+      <p class="note" style="margin:0 0 12px">The record stops being served and the reason is kept next to the
+        tombstone, forever. Nothing is destroyed — the ledger keeps what was written, because an append-only chain
+        cannot un-write a hash.</p>
+      <label class="field"><span>Reason (required)</span>
+        <input id="delReason" placeholder="duplicate of an existing contact" autocomplete="off"></label>
+      <p class="note" id="delStatus"></p>
+      <div class="row" style="margin-top:10px">
+        <button class="btn primary" id="delConfirm">Tombstone</button>
+        <button class="btn" id="delCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="mail" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mailTitle">
+    <div class="sheet-head">
+      <b id="mailTitle">Log an email</b>
+      <button class="iconbtn" id="mailClose" aria-label="Close">✕</button>
+    </div>
+    <div class="sheet-body">
+      <p class="note" style="margin:0 0 12px">Logged as a ledger event, not sent. TESSERA keeps the record of the
+        conversation; your mail client still sends the mail.</p>
+      <div class="row" style="margin-bottom:10px">
+        <label class="field" style="flex:1 1 45%"><span>Direction</span>
+          <select id="mailDir">
+            <option value="outbound">we sent</option>
+            <option value="inbound">they sent</option>
+          </select></label>
+        <label class="field" style="flex:1 1 45%"><span>When</span>
+          <input id="mailWhen" type="datetime-local"></label>
+      </div>
+      <label class="field"><span>Subject</span>
+        <input id="mailSubject" placeholder="Renewal terms" autocomplete="off"></label>
+      <label class="field"><span>Body</span>
+        <textarea id="mailBody" rows="5" placeholder="What was said"></textarea></label>
+      <p class="note" id="mailStatus"></p>
+      <div class="row" style="margin-top:10px">
+        <button class="btn primary" id="mailSave">Log it</button>
+        <button class="btn" id="mailCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="edit" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+    <div class="sheet-head">
+      <b id="editTitle">Edit field</b>
+      <button class="iconbtn" id="editClose" aria-label="Close">✕</button>
+    </div>
+    <div class="sheet-body">
+      <p class="note" id="editWhere" style="margin:0 0 12px"></p>
+      <label class="field"><span id="editLabel">Value</span>
+        <input id="editValue" autocomplete="off"></label>
+      <p class="note" id="editStatus"></p>
+      <div class="row" style="margin-top:10px">
+        <button class="btn primary" id="editSave">Save</button>
+        <button class="btn" id="editCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="new" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="newTitle">
+    <div class="sheet-head">
+      <b id="newTitle">New customer</b>
+      <button class="iconbtn" id="newClose" aria-label="Close">✕</button>
+    </div>
+    <div class="sheet-body">
+      <p class="note" style="margin:0 0 12px">Consent, lawful basis and purpose are required, and they are not
+        defaulted — a record created with an invented lawful basis is a compliance claim nobody made.</p>
+      <label class="field"><span>Full name</span>
+        <input id="newName" placeholder="Asha Rao" autocomplete="off"></label>
+      <label class="field"><span>Email</span>
+        <input id="newEmail" type="email" placeholder="asha@acme.example" autocomplete="off"></label>
+      <label class="field"><span>Phone</span>
+        <input id="newPhone" placeholder="+91 90000 00001" autocomplete="off"></label>
+      <div class="row" style="margin:4px 0 10px">
+        <label class="field" style="flex:1 1 45%"><span>Consent</span>
+          <select id="newConsent">
+            <option value="pending">pending</option>
+            <option value="granted">granted</option>
+            <option value="withdrawn">withdrawn</option>
+            <option value="not_required">not required</option>
+          </select></label>
+        <label class="field" style="flex:1 1 45%"><span>Lawful basis</span>
+          <select id="newBasis">
+            <option value="consent">consent</option>
+            <option value="contract">contract</option>
+            <option value="legitimate_interest">legitimate interest</option>
+            <option value="legal_obligation">legal obligation</option>
+            <option value="vital_interest">vital interest</option>
+            <option value="public_task">public task</option>
+          </select></label>
+      </div>
+      <label class="field"><span>Purpose</span>
+        <input id="newPurpose" value="sales" autocomplete="off"></label>
+      <p class="note" id="newStatus"></p>
+      <div class="row" style="margin-top:10px">
+        <button class="btn primary" id="newSave">Create</button>
+        <button class="btn" id="newCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="imp" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="impTitle">
+    <div class="sheet-head">
+      <b id="impTitle">Import customers</b>
+      <button class="iconbtn" id="impClose" aria-label="Close import">✕</button>
+    </div>
+    <div class="sheet-body">
+      <p class="note" style="margin:0 0 10px">Paste a CSV with a header row, or choose a file.
+        Nothing is written until you press <b>Import</b>, and an import can be undone in one press.</p>
+      <input type="file" id="impFile" accept=".csv,text/csv" style="margin-bottom:10px">
+      <textarea id="impText" rows="6" placeholder="name,email,company&#10;Asha Rao,asha@acme.example,Acme"
+        style="width:100%;background:var(--raise);color:var(--text);border:1px solid var(--line-control);
+        border-radius:var(--r);padding:10px;font-family:var(--mono);font-size:12px"></textarea>
+      <div class="row" style="margin:12px 0">
+        <button class="btn small" id="impPreview">Preview</button>
+        <span class="note" id="impSummary"></span>
+      </div>
+      <div id="impMap"></div>
+      <div id="impResult"></div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn primary" id="impCommit" disabled>Import</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="hist" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="histTitle">
+    <div class="sheet-head">
+      <b id="histTitle">Field history</b>
+      <button class="iconbtn" id="histClose" aria-label="Close history">✕</button>
+    </div>
+    <div class="sheet-body" id="histBody"></div>
+  </div>
+</div>
+<div id="update" hidden>
+  <span>A new version is ready.</span>
+  <button class="btn small" id="reloadNow">Reload</button>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="app.js" defer></script>
+</body>
+</html>
