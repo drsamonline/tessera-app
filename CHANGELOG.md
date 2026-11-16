@@ -1,5 +1,34 @@
 # Changelog
 
+## [1.32.0] - 2026-11-16
+
+### Added
+
+- **The Records list is no longer contact-only.** A Contacts / Companies / Deals switcher, with search, sort and saved
+  views applying to whichever object is on screen. A CRM you cannot browse by company or by deal is a contact directory
+  with extra screens.
+- **A company sheet** — its fields with the engine's provenance, then its contacts and its deals, each opening.
+- **`#records/Company` and `#records/Deal`** deep links, driving the same tab the pointer drives.
+
+### Fixed
+
+Five bugs, four of them invisible until a second object type existed:
+
+| Bug | What it did |
+|---|---|
+| `resolveField` with zero candidates | Threw. A company has no email field, so the list froze: the count updated, the rows did not |
+| The count said "customers" for every object | "4 customers" under a list of companies |
+| `go("records")` rewrote the hash | `#records/Company` lost its object segment on the first navigation |
+| Hydration overrode a live connection | A boot-time connection became "not connected" while its data stayed, so later loads silently did nothing |
+| "companys" | The plural of company is companies |
+
+### How the fifth was found
+
+Not by reading. The list rendered 4 rows and a chip saying "4 customers" over six contact rows — a state that is only
+possible if the render throws between setting one and setting the other. Three wrong hypotheses (CORS, boot order,
+hydration) each produced a diagnostic that narrowed it. The last one, `live=false url=http://… cos=4`, was the answer:
+the data had loaded and the connection flag had been overwritten.
+
 ## [1.31.0] - 2026-11-15
 
 ### Added

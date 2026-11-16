@@ -260,6 +260,11 @@ a{color:var(--accent)}
   border-radius:var(--r-sm);font-size:13.5px;min-height:44px;color:var(--text)}
 .pal-item[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
 .pal-item .kind{margin-left:auto;font-size:10.5px;font-family:var(--mono);opacity:.7}
+#companySheet{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;display:grid;
+  place-items:center;padding:16px;backdrop-filter:blur(2px)}
+#companySheet[hidden]{display:none}
+@media (max-width:640px){#companySheet{place-items:end center;padding:0}
+  #companySheet .sheet{width:100%;border-radius:var(--r-lg) var(--r-lg) 0 0;max-height:92vh}}
 #dealSheet{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;display:grid;place-items:center;
   padding:16px;backdrop-filter:blur(2px)}
 #dealSheet[hidden]{display:none}
@@ -550,6 +555,14 @@ a{color:var(--accent)}
     <section class="view" id="records">
       <h1>Records</h1>
       <p class="sub">Every customer, one row each, with the systems that disagree counted. Press <kbd>/</kbd> to search.</p>
+      <div class="row" id="objectBar">
+        <div class="seg" id="objectSeg" aria-label="Object">
+          <button data-object="Contact" aria-pressed="true">Contacts</button>
+          <button data-object="Company" aria-pressed="false">Companies</button>
+          <button data-object="Deal" aria-pressed="false">Deals</button>
+        </div>
+      </div>
+
       <div class="row" id="viewBar">
         <div class="seg" id="filterSeg" aria-label="Filter">
           <button data-filter="all" aria-pressed="true">All</button>
@@ -784,6 +797,15 @@ a{color:var(--accent)}
     <input id="palInput" type="text" placeholder="Jump to a customer, or type a command…"
            autocomplete="off" spellcheck="false">
     <div id="palList" role="listbox" aria-label="Commands"></div>
+  </div>
+</div>
+<div id="companySheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="companyTitle">
+    <div class="sheet-head">
+      <b id="companyTitle">Company</b>
+      <button class="iconbtn" id="companyClose" aria-label="Close">✕</button>
+    </div>
+    <div class="sheet-body" id="companyBody"></div>
   </div>
 </div>
 <div id="dealSheet" hidden>

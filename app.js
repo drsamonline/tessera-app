@@ -283,7 +283,7 @@ async function loadEngineRecords() {
 }
 
 function activeRecord() {
-  const pool = allRecords();
+  const pool = listPool();
   return pool.find(record => record.id === state.selected) || pool[0] || RECORDS[0];
 }
 
@@ -291,6 +291,9 @@ function activeRecord() {
 const AUTHORITY_RANK = { authority: 3, delegate: 2, bidirectional: 1, mirror: 0 };
 
 function resolveField(field, candidates, authority) {
+  if (!candidates || !Object.keys(candidates).length) {
+    return { value: "", node: "engine", rule: "no value", blocked: false };
+  }
   const entries = Object.entries(candidates).map(([node, value]) => ({ node, value }));
   if (entries.length === 1) return { ...entries[0], rule: "single source" };
 
@@ -334,6 +337,7 @@ const DEFAULT_STATE = {
   selected: "c1",
   query: "",
   view: { filter: "all", sort: "name" },
+  listObject: "Contact",   // Contact, Company or Deal — the list is not contact-only
   savedViews: {},
   customRecords: [],
   outbox: [],
@@ -714,10 +718,43 @@ function conflictsIn(record) {
   }).length;
 }
 
+/* The list is not contact-only. A CRM you cannot browse by company or by deal is a
+   contact directory with extra screens; the object switcher is the difference. */
+function listPool() {
+  const object = state.listObject || "Contact";
+  if (object === "Company") {
+    return (state.engineCompanies || []).map(company => ({
+      id: company.id, object: "Company",
+      name: company.name || company.domain || company.id.slice(0, 8),
+      role: company.industry || "company",
+      company: company.domain || "",
+      health: 0, fields: { name: { engine: company.name }, domain: { engine: company.domain } },
+      activity: [], raw: company,
+    }));
+  }
+  if (object === "Deal") {
+    return (state.engineDeals || []).map(deal => {
+      const company = (state.engineCompanies || [])
+        .find(item => `Company:${item.id}` === deal.company_ref);
+      return {
+        id: deal.id, object: "Deal",
+        name: deal.name || "deal",
+        role: deal.stage || "unknown",
+        company: company ? company.name : "",
+        health: 0,
+        fields: { name: { engine: deal.name }, stage: { engine: deal.stage },
+                  amount_minor: { engine: deal.amount_minor } },
+        activity: [], raw: deal,
+      };
+    });
+  }
+  return allRecords().map(record => ({ ...record, object: "Contact" }));
+}
+
 function renderRecords() {
   const query = (state.query || "").trim().toLowerCase();
   const { filter, sort } = state.view || { filter: "all", sort: "name" };
-  const pool = allRecords();
+  const pool = listPool();
   const matches = pool.filter(record => {
     if (query) {
       const haystack = [record.name, record.company, record.role,
@@ -735,13 +772,18 @@ function renderRecords() {
     return a.name.localeCompare(b.name);
   });
 
+  const object = state.listObject || "Contact";
+  const noun = ({ Contact: "customer", Company: "company", Deal: "deal" })[object];
+  const plural = ({ Contact: "customers", Company: "companies", Deal: "deals" })[object];
   $("#recordCount").textContent = (query || filter !== "all")
     ? `${matches.length} of ${pool.length}`
-    : `${pool.length} customers`;
+    : `${pool.length} ${pool.length === 1 ? noun : plural}`;
 
   const host = $("#recordList");
   if (!matches.length) {
-    host.innerHTML = `<p class="empty">No record matches “${esc(query)}”.</p>`;
+    host.innerHTML = query
+      ? `<p class="empty">Nothing matches “${esc(query)}”.</p>`
+      : `<p class="empty">No ${esc(plural)} yet.</p>`;
     return;
   }
   host.innerHTML = matches.map(record => {
@@ -762,11 +804,17 @@ function renderRecords() {
     </button>`;
   }).join("");
 
-  $$("[data-open]", host).forEach(button => button.onclick = () => openRecord(button.dataset.open));
+  $$("[data-open]", host).forEach(button => button.onclick = () => {
+    const object = state.listObject || "Contact";
+    if (object === "Company") openCompany(button.dataset.open);
+    else if (object === "Deal") openDeal(button.dataset.open);
+    else openRecord(button.dataset.open);
+  });
 }
 
 function currentValueFor(record, field) {
   const candidates = record.fields[field] || {};
+  if (!Object.keys(candidates).length) return "";
   const chosen = state.resolved[record.id + "|" + field];
   if (chosen && candidates[chosen] !== undefined) return candidates[chosen];
   const resolution = resolveField(field, candidates, Object.fromEntries(
@@ -1387,6 +1435,7 @@ document.addEventListener("keydown", event => {
     if (!$("#mail").hidden) closeSheet("#mail");
     if (!$("#del").hidden) closeSheet("#del");
     if (!$("#dealSheet").hidden) closeSheet("#dealSheet");
+    if (!$("#companySheet").hidden) closeSheet("#companySheet");
   }
 });
 
@@ -1522,6 +1571,70 @@ function renderDealFields(deal, view) {
 
 $("#dealClose").onclick = () => closeSheet("#deal");
 $("#dealSheet").onclick = event => { if (event.target.id === "dealSheet") closeSheet("#dealSheet"); };
+
+/* ---- a company, with the same provenance a contact gets ------------------ */
+async function openCompany(companyId) {
+  const body = $("#companyBody");
+  const company = (state.engineCompanies || []).find(item => item.id === companyId);
+  $("#companyTitle").textContent = company ? company.name : "Company";
+  body.innerHTML = `<p class="note">Reading…</p>`;
+  openSheet("#companySheet");
+
+  let view = null;
+  if (state.engine && state.engine.live) {
+    try { view = await engineFetch(`/v1/mesh/view/Company/${companyId}`); } catch { view = null; }
+  }
+
+  const ref = `Company:${companyId}`;
+  const contacts = (state.engineRecords || []).filter(record => {
+    const field = record.fields && record.fields.company_ref;
+    return field && Object.values(field)[0] === ref;
+  });
+  const deals = (state.engineDeals || []).filter(deal => deal.company_ref === ref);
+
+  const SHOWN = ["name", "domain", "industry"];
+  const rows = SHOWN.filter(field => (view && view.fields && view.fields[field])
+      || (company && company[field]))
+    .map(field => {
+      const resolved = view && view.fields && view.fields[field];
+      const value = resolved ? resolved.value : company[field];
+      const source = resolved
+        ? `${sourceLabel(resolved.source)} · ${String(resolved.rule).replace(/_/g, " ")}`
+        : "from the engine";
+      return `<div class="frow" style="grid-template-columns:120px minmax(0,1fr) auto">
+        <div class="k">${esc(field)}</div><div class="v">${esc(value)}</div>
+        <div class="src">${esc(source)}</div></div>`;
+    }).join("");
+
+  body.innerHTML = rows + `
+    <p class="note" style="margin:14px 0 6px">${esc(contacts.length)} contact${contacts.length === 1 ? "" : "s"}</p>
+    ${contacts.map(record => `<button class="row" data-contact="${esc(record.id)}"
+        style="width:100%;text-align:left;border-radius:8px;padding:6px 8px">
+        <span>${esc(record.name)}</span>
+        <span class="mono" style="margin-left:auto;font-size:11px">${esc(record.fields.email ? Object.values(record.fields.email)[0] : "")}</span>
+      </button>`).join("") || `<p class="note">No contacts at this company.</p>`}
+    <p class="note" style="margin:14px 0 6px">${esc(deals.length)} deal${deals.length === 1 ? "" : "s"}</p>
+    ${deals.map(deal => `<button class="row" data-company-deal="${esc(deal.id)}"
+        style="width:100%;text-align:left;border-radius:8px;padding:6px 8px">
+        <span>${esc(deal.name)}</span>
+        <span class="chip">${esc(deal.stage || "unknown")}</span>
+        <span class="mono" style="margin-left:auto">${formatValue("amount_minor", deal.amount_minor || 0)}</span>
+      </button>`).join("") || `<p class="note">No deals for this company.</p>`}`;
+
+  $$("[data-contact]", body).forEach(button => button.onclick = () => {
+    closeSheet("#companySheet");
+    openRecord(button.dataset.contact);
+  });
+  $$("[data-company-deal]", body).forEach(button => button.onclick = () => {
+    closeSheet("#companySheet");
+    openDeal(button.dataset.companyDeal);
+  });
+}
+
+$("#companyClose").onclick = () => closeSheet("#companySheet");
+$("#companySheet").onclick = event => {
+  if (event.target.id === "companySheet") closeSheet("#companySheet");
+};
 
 /* ---- tombstone a record --------------------------------------------------- */
 function openDelete() {
@@ -1919,7 +2032,7 @@ $("#impFile").onchange = event => {
   reader.readAsText(file);
 };
 
-["#hist", "#imp", "#pal", "#new", "#edit", "#mail", "#del", "#dealSheet"].forEach(id => trapFocus($(id)));
+["#hist", "#imp", "#pal", "#new", "#edit", "#mail", "#del", "#dealSheet", "#companySheet"].forEach(id => trapFocus($(id)));
 
 /* ---- navigation --------------------------------------------------------- */
 function go(view, recordId) {
@@ -1945,6 +2058,15 @@ function applyRoute() {
     renderAll();
   }
   if (document.getElementById(route.view)) go(route.view);
+  if (route.view === "records" && ["Contact", "Company", "Deal"].includes(route.recordId)) {
+    // Drive the same path the tab drives. Setting state and calling renderAll from
+    // here raced the engine connection and produced an empty list; a click cannot,
+    // because it runs after everything else has settled.
+    const tab = document.querySelector(`[data-object="${route.recordId}"]`);
+    if (tab) tab.click();
+    history.replaceState(null, "",
+      location.pathname + location.search + `#records/${route.recordId}`);
+  }
   if (route.view === "records" && route.recordId === "import") openImport();
   if (route.view === "deal" && route.recordId) openDeal(route.recordId);
   if (route.view === "command") openPalette();
@@ -1959,6 +2081,16 @@ function routeFromHash() {
 
 $$("[data-go]").forEach(button => button.onclick = () => go(button.dataset.go));
 $("#backToList").onclick = () => go("records");
+$$("[data-object]").forEach(button => button.onclick = () => {
+  state.listObject = button.dataset.object;
+  save();
+  $$("[data-object]").forEach(other =>
+    other.setAttribute("aria-pressed", String(other === button)));
+  renderRecords();
+  const count = listPool().length;
+  toast(`${count} ${button.dataset.object.toLowerCase()}${count === 1 ? "" : "s"}`);
+});
+
 $$("[data-filter]").forEach(button => button.onclick = () => {
   state.view.filter = button.dataset.filter;
   save(); renderRecords(); syncViewBar();
@@ -1984,6 +2116,8 @@ $("#savedViews").onchange = event => {
 };
 
 function syncViewBar() {
+  $$("[data-object]").forEach(button =>
+    button.setAttribute("aria-pressed", String(button.dataset.object === (state.listObject || "Contact"))));
   $$("[data-filter]").forEach(button =>
     button.setAttribute("aria-pressed", String(button.dataset.filter === state.view.filter)));
   $$("[data-sort]").forEach(button =>
@@ -2273,7 +2407,11 @@ document.addEventListener("keydown", event => {
   renderQueue();
 
   const beforeHydration = JSON.stringify(state);
+  const liveEngine = state.engine && state.engine.live ? state.engine : null;
   state = await loadState();
+  // a connection made during boot outranks the stored one: hydration must not
+  // turn a live engine back into "not connected"
+  if (liveEngine) state.engine = liveEngine;
   const changed = JSON.stringify(state) !== beforeHydration;
   applyTheme(state.theme);
   applyDensity(state.density);
