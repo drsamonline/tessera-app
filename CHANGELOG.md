@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.33.0] - 2026-11-16
+
+### Added
+
+- **[DEBUGGING.md](DEBUGGING.md)** — four bugs from this repository, each written as the sequence that actually happened:
+  the invisible action bar, the frozen list, the layout shift, and the card that contradicted its own table. With the
+  three wrong hypotheses that preceded the answer, because the wrong turns are the transferable part.
+
+### What it records
+
+- A render that half-completes leaves a signature: one part updates, another does not. Look for a throw between the two
+  assignments.
+- Print the state; do not test the theory. Every case ended with a diagnostic that displayed a value.
+- A number is not a diagnosis. `CLS 0.291` is unactionable; `DIV.grid2 at 762 ms` is a fix.
+- Markup checks cannot see paint — the accessibility harness passed through a bug that removed every button from the
+  screen.
+
 ## [1.32.0] - 2026-11-16
 
 ### Added

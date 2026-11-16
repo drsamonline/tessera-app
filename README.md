@@ -124,6 +124,7 @@ writes the whole workspace to one file, and **Restore** reads it back.
 | [SECURITY.md](SECURITY.md) | How to report a vulnerability, and the known limits stated up front |
 | [REVIEW.md](REVIEW.md) | A code review with findings, evidence and a ship-or-block verdict |
 | [DESIGN-REVIEW.md](DESIGN-REVIEW.md) | Three screens judged against the HIG, and what changed |
+| [DEBUGGING.md](DEBUGGING.md) | Four bugs, the sequence that found each, and what generalises |
 
 The privacy document is written against the code: `grep -n "fetch(" index.html` lists every request the app can make,
 and the document names both of them.

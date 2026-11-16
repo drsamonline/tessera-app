@@ -16,7 +16,7 @@ One HTML file, one script, one service worker, one Android shell. No framework, 
 | `tests/` | Two harnesses that run in a real browser | yes |
 | `scripts/check_app.py` | Eight static gates | yes |
 | `android/` | The APK source and its build script | yes |
-| `REVIEW.md`, `A11Y.md`, `PERFORMANCE.md`, `DESIGN-REVIEW.md`, `PRIVACY.md`, `SECURITY.md` | Findings and paperwork | only when the finding changes |
+| `REVIEW.md`, `A11Y.md`, `PERFORMANCE.md`, `DESIGN-REVIEW.md`, `DEBUGGING.md`, `PRIVACY.md`, `SECURITY.md` | Findings and paperwork | only when the finding changes |
 | `assets/shot-*.png` | Screenshots referenced by the README | re-shoot, do not hand-edit |
 
 ## The verification gate
