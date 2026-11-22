@@ -225,6 +225,30 @@ async function loadEngineCompanies() {
   } catch { state.engineCompanies = []; }
 }
 
+/* Seats and tasks. A follow-up is a Task assigned to a seat: the engine's Task
+   requires a seat_id, so without seats there are no follow-ups at all. */
+async function loadEngineSeats() {
+  state.engineSeats = [];
+  try {
+    const listing = await engineFetch("/v1/objects/Seat");
+    for (const id of listing.ids) {
+      const detail = await engineFetch(`/v1/objects/Seat/${id}`);
+      state.engineSeats.push(detail.record || {});
+    }
+  } catch { state.engineSeats = []; }
+}
+
+async function loadEngineTasks() {
+  state.engineTasks = [];
+  try {
+    const listing = await engineFetch("/v1/objects/Task");
+    for (const id of listing.ids) {
+      const detail = await engineFetch(`/v1/objects/Task/${id}`);
+      state.engineTasks.push(detail.record || {});
+    }
+  } catch { state.engineTasks = []; }
+}
+
 async function loadEngineDeals() {
   state.engineDeals = [];
   try {
@@ -273,6 +297,8 @@ async function loadEngineRecords() {
   state.engineRecords = records;
   await loadEngineDeals();
   await loadEngineCompanies();
+  await loadEngineSeats();
+  await loadEngineTasks();
   // the selection was a demo id; point it at a record that now exists
   if (records.length && !records.some(record => record.id === state.selected)) {
     state.selected = records[0].id;
@@ -1018,6 +1044,128 @@ async function moveDeal(dealId, stage) {
   });
 }
 
+function tasksFor(recordId) {
+  return (state.engineTasks || [])
+    .filter(task => (task.payload || {}).record === recordId)
+    .sort((a, b) => String(a.sla_deadline).localeCompare(String(b.sla_deadline)));
+}
+
+function renderFollowups() {
+  const host = $("#followups");
+  if (!host) return;
+  const record = activeRecord();
+  const tasks = tasksFor(record.id);
+  const open = tasks.filter(task => task.state !== "done");
+
+  if (!(state.engine && state.engine.live)) {
+    host.innerHTML = `<p class="note">Follow-ups are stored by the engine. Connect one to keep them.</p>`;
+    return;
+  }
+  if (!tasks.length) {
+    host.innerHTML = `<p class="note">Nothing outstanding. Add a follow-up and it is assigned to a seat.</p>`;
+    return;
+  }
+
+  const due = task => String(task.sla_deadline || "").slice(0, 10);
+  host.innerHTML = tasks.map(task => {
+    const done = task.state === "done";
+    const when = due(task);
+    const late = !done && when && when < new Date().toISOString().slice(0, 10);
+    return `<div class="row" style="margin:6px 0;gap:10px">
+      <button class="rowaction" data-complete="${esc(task.id)}"
+        title="${done ? "Already done" : "Mark done"}"
+        style="min-width:36px;${done ? "opacity:.45" : ""}">${done ? "✓" : "○"}</button>
+      <span style="flex:1 1 auto;${done ? "text-decoration:line-through;opacity:.6" : ""}">
+        ${esc((task.payload || {}).title || "Follow-up")}</span>
+      <span class="mono" style="font-size:11px;color:${late ? "var(--danger)" : "var(--muted)"}">
+        ${esc(when || "no date")}${late ? " · late" : ""}</span>
+    </div>`;
+  }).join("") +
+  `<p class="note" style="margin-top:8px">${open.length} open, ${tasks.length - open.length} done</p>`;
+
+  $$("[data-complete]", host).forEach(button => button.onclick = () => completeFollowup(button.dataset.complete));
+}
+
+async function completeFollowup(taskId) {
+  const task = (state.engineTasks || []).find(item => item.id === taskId);
+  if (!task || task.state === "done") return;
+  const response = await fetch(`${state.engine.url}/v1/objects/Task/${taskId}/fields/state`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${state.engine.token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ value: "done" }),
+  }).catch(() => null);
+  if (!response || !response.ok) { toast("Could not mark it done"); return; }
+  await loadEngineTasks();
+  renderFollowups();
+  toast("Done. The change is in the chain", async () => {
+    await fetch(`${state.engine.url}/v1/objects/Task/${taskId}/fields/state`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${state.engine.token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ value: task.state }),
+    });
+    await loadEngineTasks();
+    renderFollowups();
+    toast("Reopened");
+  });
+}
+
+function openFollowup() {
+  const record = activeRecord();
+  const seats = state.engineSeats || [];
+  const hint = $("#followupHint");
+  if (!(state.engine && state.engine.live)) {
+    hint.textContent = "Connect an engine first — a follow-up is stored there, not here.";
+  } else if (!seats.length) {
+    hint.textContent = "No seats exist yet, and a follow-up is assigned to a seat. Add a seat first.";
+  } else {
+    const seat = seats.find(item => (item.permissions_scope || {}).objects?.includes("Task")) || seats[0];
+    hint.textContent = `Assigned to: ${seat.name || "a seat"}.`;
+  }
+  $("#followupText").value = "";
+  const next = new Date(Date.now() + 3 * 86400000);
+  $("#followupDue").value = next.toISOString().slice(0, 10);
+  openSheet("#followupSheet");
+  $("#followupText").focus();
+}
+
+async function saveFollowup() {
+  const title = ($("#followupText").value || "").trim();
+  const dueDate = $("#followupDue").value;
+  if (!title) { toast("Give the follow-up a title"); return; }
+  if (!(state.engine && state.engine.live)) { toast("Connect an engine first"); return; }
+
+  const seats = state.engineSeats || [];
+  const seat = seats.find(item => ((item.permissions_scope || {}).objects || []).includes("Task")) || seats[0];
+  if (!seat) { toast("No seat to assign it to"); return; }
+
+  const body = {
+    state: "open",
+    sla_deadline: `${dueDate || new Date().toISOString().slice(0, 10)}T17:00:00Z`,
+    payload: { title, record: activeRecord().id },
+    seat_id: seat.id,
+    seat_version: seat.version || 1,
+    required_capabilities: [],
+    consent_state: "not_required",
+    lawful_basis: "contract",
+    purpose_id: "service",
+    retention_policy_id: "default",
+  };
+  const response = await fetch(`${state.engine.url}/v1/objects/Task`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${state.engine.token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }).catch(() => null);
+  if (!response || !response.ok) {
+    const detail = response ? await response.json().catch(() => ({})) : {};
+    toast(detail.detail || "Could not add it");
+    return;
+  }
+  closeSheet("#followupSheet");
+  await loadEngineTasks();
+  renderFollowups();
+  toast("Follow-up added");
+}
+
 function renderRelated() {
   const host = $("#related");
   if (!host) return;
@@ -1385,7 +1533,7 @@ function renderAll() {
   $("#printMeta").textContent =
     `${record.name} · ${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC · ` +
     `chain head ${head}… · ${Object.keys(record.fields).filter(isConflict).length} open conflict(s)`;
-  renderRecords(); renderConnectors(); renderNotes(); renderRelated();
+  renderRecords(); renderConnectors(); renderNotes(); renderRelated(); renderFollowups();
   renderPipeline(); renderReport();
   renderFields(); renderTimeline(); renderRules(); renderConflicts(); renderLedger(); renderSeats();
   renderRouting(); renderWorkflows();
@@ -1630,6 +1778,14 @@ async function openCompany(companyId) {
     openDeal(button.dataset.companyDeal);
   });
 }
+
+$("#addFollowup").onclick = openFollowup;
+$("#followupSave").onclick = saveFollowup;
+$("#followupCancel").onclick = () => closeSheet("#followupSheet");
+$("#followupClose").onclick = () => closeSheet("#followupSheet");
+$("#followupSheet").onclick = event => {
+  if (event.target.id === "followupSheet") closeSheet("#followupSheet");
+};
 
 $("#companyClose").onclick = () => closeSheet("#companySheet");
 $("#companySheet").onclick = event => {
@@ -2032,7 +2188,8 @@ $("#impFile").onchange = event => {
   reader.readAsText(file);
 };
 
-["#hist", "#imp", "#pal", "#new", "#edit", "#mail", "#del", "#dealSheet", "#companySheet"].forEach(id => trapFocus($(id)));
+["#hist", "#imp", "#pal", "#new", "#edit", "#mail", "#del", "#dealSheet", "#companySheet",
+ "#followupSheet"].forEach(id => trapFocus($(id)));
 
 /* ---- navigation --------------------------------------------------------- */
 function go(view, recordId) {

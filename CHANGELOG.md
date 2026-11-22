@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.34.0] - 2026-11-22
+
+### Security
+
+- **The service worker was caching the engine's API responses.** `fetch` handled every GET on any origin, so the first
+  empty `/v1/objects/Task` list was cached and served forever. Every write looked like it vanished: create a record, and
+  the list still shows the old one.
+
+  That is the bug behind several earlier mysteries, including a company list that would not populate. It is scoped to
+  the shell now — cross-origin requests are not touched.
+
+### Added
+
+- **Follow-ups.** A task attached to a customer, assigned to a seat, with a due date. Add one from the record; tick it
+  done. Both are ledger events, and undoing a tick reopens the task.
+
+### What it took
+
+The engine's `Task` requires a `seat_id`, so a follow-up could not exist until the demo had seats. It had none. That is
+fixed in the engine (`v1.49.0`), which is also where a second bug was found: `record.created` had no `canonical_ref`, so
+creates stopped appearing after the second one.
+
+Three bugs, one chain: no seats meant no tasks, a missing reference meant no creates, and a caching service worker meant
+nothing you did ever showed up.
+
 ## [1.33.0] - 2026-11-16
 
 ### Added

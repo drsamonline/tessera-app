@@ -260,6 +260,11 @@ a{color:var(--accent)}
   border-radius:var(--r-sm);font-size:13.5px;min-height:44px;color:var(--text)}
 .pal-item[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
 .pal-item .kind{margin-left:auto;font-size:10.5px;font-family:var(--mono);opacity:.7}
+#followupSheet{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;display:grid;
+  place-items:center;padding:16px;backdrop-filter:blur(2px)}
+#followupSheet[hidden]{display:none}
+@media (max-width:640px){#followupSheet{place-items:end center;padding:0}
+  #followupSheet .sheet{width:100%;border-radius:var(--r-lg) var(--r-lg) 0 0}}
 #companySheet{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;display:grid;
   place-items:center;padding:16px;backdrop-filter:blur(2px)}
 #companySheet[hidden]{display:none}
@@ -537,6 +542,14 @@ a{color:var(--accent)}
         </div>
 
         <div class="card" style="margin-top:var(--gap)">
+          <header>
+            Follow-ups
+            <button class="rowaction" id="addFollowup" style="margin-left:auto">Add follow-up</button>
+          </header>
+          <div class="body" id="followups"></div>
+        </div>
+
+        <div class="card" style="margin-top:var(--gap)">
           <header>Notes</header>
           <div class="body">
             <div class="row" style="margin-bottom:10px">
@@ -797,6 +810,25 @@ a{color:var(--accent)}
     <input id="palInput" type="text" placeholder="Jump to a customer, or type a command…"
            autocomplete="off" spellcheck="false">
     <div id="palList" role="listbox" aria-label="Commands"></div>
+  </div>
+</div>
+<div id="followupSheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="followupTitle">
+    <div class="sheet-head">
+      <b id="followupTitle">Add a follow-up</b>
+      <button class="iconbtn" id="followupClose" aria-label="Close">✕</button>
+    </div>
+    <div class="sheet-body">
+      <label class="sr" for="followupText">What needs doing</label>
+      <input id="followupText" placeholder="Call about the renewal" autocomplete="off">
+      <label class="sr" for="followupDue">Due date</label>
+      <input id="followupDue" type="date">
+      <p class="note" id="followupHint"></p>
+      <div class="row" style="margin-top:14px">
+        <button class="btn primary" id="followupSave">Add it</button>
+        <button class="btn" id="followupCancel">Cancel</button>
+      </div>
+    </div>
   </div>
 </div>
 <div id="companySheet" hidden>
