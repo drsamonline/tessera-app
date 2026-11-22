@@ -746,6 +746,14 @@ function conflictsIn(record) {
 
 /* The list is not contact-only. A CRM you cannot browse by company or by deal is a
    contact directory with extra screens; the object switcher is the difference. */
+function poolFor(object) {
+  const previous = state.listObject;
+  state.listObject = object;
+  const pool = listPool();
+  state.listObject = previous;
+  return pool;
+}
+
 function listPool() {
   const object = state.listObject || "Contact";
   if (object === "Company") {
@@ -780,7 +788,12 @@ function listPool() {
 function renderRecords() {
   const query = (state.query || "").trim().toLowerCase();
   const { filter, sort } = state.view || { filter: "all", sort: "name" };
-  const pool = listPool();
+  // A search box that only looks at the tab you are on is a filter, not a search.
+  // With a query, look everywhere and group the answer by object.
+  const searching = query.length > 0;
+  const pool = searching
+    ? ["Contact", "Company", "Deal"].flatMap(poolFor)
+    : listPool();
   const matches = pool.filter(record => {
     if (query) {
       const haystack = [record.name, record.company, record.role,
@@ -801,9 +814,10 @@ function renderRecords() {
   const object = state.listObject || "Contact";
   const noun = ({ Contact: "customer", Company: "company", Deal: "deal" })[object];
   const plural = ({ Contact: "customers", Company: "companies", Deal: "deals" })[object];
-  $("#recordCount").textContent = (query || filter !== "all")
-    ? `${matches.length} of ${pool.length}`
-    : `${pool.length} ${pool.length === 1 ? noun : plural}`;
+  $("#recordCount").textContent = searching
+    ? `${matches.length} result${matches.length === 1 ? "" : "s"} across contacts, companies and deals`
+    : (filter !== "all" ? `${matches.length} of ${pool.length}`
+                        : `${pool.length} ${pool.length === 1 ? noun : plural}`);
 
   const host = $("#recordList");
   if (!matches.length) {
@@ -812,11 +826,16 @@ function renderRecords() {
       : `<p class="empty">No ${esc(plural)} yet.</p>`;
     return;
   }
+  let lastObject = null;
   host.innerHTML = matches.map(record => {
     const conflicts = conflictsIn(record);
     const initials = record.name.split(" ").map(part => part[0]).join("").slice(0, 2);
     const email = currentValueFor(record, "email");
-    return `<button class="rec" data-open="${esc(record.id)}" ${record.id === state.selected ? 'aria-current="true"' : ""}>
+    const heading = searching && record.object !== lastObject
+      ? `<p class="note" style="margin:10px 0 2px;font-size:11px;letter-spacing:.06em;text-transform:uppercase">` +
+        `${esc(record.object)}${lastObject === null ? "" : "s"}</p>` : "";
+    lastObject = record.object;
+    return heading + `<button class="rec" data-open="${esc(record.id)}" data-object="${esc(record.object || object)}" ${record.id === state.selected ? 'aria-current="true"' : ""}>
       <span class="av" aria-hidden="true">${esc(initials)}</span>
       <span>
         <span class="nm">${esc(record.name)}</span>
@@ -831,7 +850,7 @@ function renderRecords() {
   }).join("");
 
   $$("[data-open]", host).forEach(button => button.onclick = () => {
-    const object = state.listObject || "Contact";
+    const object = button.dataset.object || state.listObject || "Contact";
     if (object === "Company") openCompany(button.dataset.open);
     else if (object === "Deal") openDeal(button.dataset.open);
     else openRecord(button.dataset.open);

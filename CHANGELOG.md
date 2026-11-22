@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.35.0] - 2026-11-22
+
+### Added
+
+- **Search looks everywhere.** A query used to filter only the tab you were on, which is a filter rather than a search.
+  It now searches contacts, companies and deals together and groups the answer by object, with each row opening the
+  right sheet.
+
+  `acme` returns **Acme Industrial** (company), **Acme renewal** (deal), and the two contacts at that company. The count
+  reads "4 results across contacts, companies and deals" instead of a per-tab number that changes meaning as you switch
+  tabs.
+
+### Verified
+
+Four queries in a real browser: `acme` 4 rows, `asha` 1, `renewal` 1, `zzz` 0.
+
 ## [1.34.0] - 2026-11-22
 
 ### Security

@@ -44,7 +44,7 @@ shows **where every value came from**, and records the whole thing in a hash cha
 
 | Screen | What it does |
 |---|---|
-| **Records** | **Contacts, companies and deals** — one switcher, with search, sort and saved views for whichever is on screen. A **New customer** form, and a company sheet listing its people and its deals. `/` searches, filter by conflicts, sort by health, save the view you use every morning, and **import a CSV** with a dry run and a one-press rollback. |
+| **Records** | **Contacts, companies and deals** — one switcher, and a search box that looks across all three and groups the answer. A **New customer** form, and a company sheet listing its people and its deals. `/` searches, filter by conflicts, sort by health, save the view you use every morning, and **import a CSV** with a dry run and a one-press rollback. |
 | **Unified** | One record, a **connector strip** above it and **notes** below. Every field can be **edited** — the write goes to the system of record and the ledger records who changed it, from what, to what. Every field names the system it came from and the rule that chose it. Click a value for its write history; export as JSON or CSV; copy a link; **print** it; add a note, or **log an email** — both ledger events, not a separate store. |
 | **Resolve** | Both values, both trust scores, the rule the engine would apply, and whether each candidate is the **current** value or a **change**. Choose one, resolve all, or press **Always** to make it a standing rule. Every choice is logged and undoable. |
 | **Ledger** | Every event, SHA-256 chained. **Verify chain** recomputes it locally. **Tamper** proves the verification works. An undo is a new event, never a deleted one. |
